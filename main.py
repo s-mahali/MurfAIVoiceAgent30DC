@@ -23,7 +23,7 @@ class Payload(BaseModel):
 async def root():
     return FileResponse("static/index.html")
 
-@app.post("/audio/")
+@app.post("/audio")
 async def generateAudio(payload: Payload):
     client = Murf(
        api_key = MURF_API_KEY
