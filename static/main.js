@@ -5,7 +5,11 @@ const recordButton = document.getElementById("recordButton");
 const stopRecordButton = document.getElementById("stopButton");
 const recordingPlayer = document.getElementById("recordingPlayer");
 const recorderContainer = document.getElementById("recorderContainer");
-console.log("recordButton", recordButton);
+const fileName = document.getElementById("filename");
+const contentType = document.getElementById("contentType");
+const fileSize = document.getElementById("sizeKb");
+const resultContainer = document.getElementById("resultContainer");
+
 
 let content = "";
 
@@ -62,7 +66,6 @@ navigator.mediaDevices
       mediaRecorder.stop();
       console.log("stopped recording", mediaRecorder.state);
       recordButton.style.background = "green";
-      alert("record stopped!");
       recordButton.disabled = false;
       recordButton.style.cursor = "pointer";
       recordButton.style.color = "";
@@ -78,7 +81,8 @@ navigator.mediaDevices
       chunks = [];
       const audioURL = URL.createObjectURL(blob);
       recordingPlayer.src = audioURL;
-      recordingPlayer.play();
+      //upload Audio File to server temp_upload folder 
+      uploadAudioFile(blob);
       console.log("recorder stopped");
     };
 
@@ -89,3 +93,75 @@ navigator.mediaDevices
   .catch((err) => {
     console.error(`The following error occurred: ${err}`);
   });
+
+const uploadingContainer = document.getElementById("uploadingContainer");
+const uploadingText = document.getElementById("uploadingText");
+const uploadingPercentage = document.getElementById("uploadingPercentage");
+
+const uploadAudioFile = async (file) => {
+  try {
+    // Show uploading status
+    uploadingContainer.style.display = "flex";
+    uploadingText.innerText = "Uploading audio file...";
+    uploadingPercentage.innerText = "0%";
+
+    const formData = new FormData();
+    formData.append("file", file, "recording.ogg");
+
+    // Use fetch with XMLHttpRequest to track upload progress
+    const xhr = new XMLHttpRequest();
+
+    // Track upload progress
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const percentComplete = Math.round((event.loaded / event.total) * 100);
+        uploadingPercentage.innerText = percentComplete + "%";
+      }
+    };
+
+    // Create a promise to handle the response
+    const uploadPromise = new Promise((resolve, reject) => {
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(JSON.parse(xhr.responseText));
+        } else {
+          reject(new Error(`HTTP Error: ${xhr.status}`));
+        }
+      };
+      xhr.onerror = () => reject(new Error("Network Error"));
+    });
+
+    // Send the request
+    xhr.open("POST", "/upload", true);
+    xhr.send(formData);
+
+    // Wait for the response
+    const responseData = await uploadPromise;
+    console.log("Upload successful:", responseData);
+    
+    // Update UI with file details
+    resultContainer.style.display = "flex";
+    fileName.innerText = `Filename: ${responseData.filename}`;
+    contentType.innerText = `Content Type: ${responseData.content_type}`;
+    fileSize.innerText = `File Size: ${responseData.size_kb} KB`;
+    uploadingText.innerText = `Upload complete!`;
+    uploadingPercentage.innerText = "";
+
+    // Hide only upload status after 3 seconds
+    setTimeout(() => {
+      uploadingContainer.style.display = "none";
+    }, 3000);
+
+    return responseData;
+  } catch (error) {
+    console.error("error uploading audio file:", error?.message);
+    uploadingText.innerText =
+      "Upload failed: " + (error?.message || "Unknown error");
+    uploadingPercentage.innerText = "";
+
+    // Hide only upload status after 3 seconds
+    setTimeout(() => {
+      uploadingContainer.style.display = "none";
+    }, 3000);
+  }
+};

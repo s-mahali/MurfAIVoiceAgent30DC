@@ -1,10 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile
 from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from murf import Murf
 from dotenv import load_dotenv
 import os
+import time
 
 load_dotenv()
 MURF_API_KEY = os.getenv('MURF_API_KEY')
@@ -43,6 +44,34 @@ async def generateAudio(payload: Payload):
     return res.audio_file   
 
 
+@app.post('/upload/')
+async def upload_file(file: UploadFile):
+    try:
+        # Create temp_upload directory if it doesn't exist
+        os.makedirs("temp_upload", exist_ok=True)
+        
+        # Generate a unique filename
+        timestamp = int(time.time())
+        filename = f"temp_upload/{timestamp}_{file.filename if file.filename else 'recording.ogg'}"
+        
+        # Save the file to the temp_upload directory
+        with open(filename, 'wb') as f:
+            content = await file.read()
+            f.write(content)
+            print("File uploaded successfully to", filename)
+        
+        # Get file size in KB
+        file_size = os.path.getsize(filename) / 1024
+        
+        return {
+            "message": "File uploaded successfully",
+            "filename": os.path.basename(filename),
+            "content_type": file.content_type if file.content_type else "audio/ogg",
+            "size_kb": round(file_size, 2)
+        }
+    except Exception as e:
+        print("Error uploading file:", str(e))
+        return {"error": str(e)}
  
 
 

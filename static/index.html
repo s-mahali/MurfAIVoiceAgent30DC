@@ -4,203 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Murf30Days</title>
-    <style>
-        * {
-           margin: 0;
-           padding: 0;
-           box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #121212;
-            color: #e0e0e0;
-            min-height: 100vh;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background-image: radial-gradient(circle at 1px 1px, #2a2a2a 1px, transparent 0);
-            background-size: 40px 40px;
-        }
-        
-        /* Main container card */
-        .container {
-            background-color: #1e1e1e;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            width: 100%;
-            max-width: 500px;
-            text-align: center;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            transition: all 0.3s ease;
-        }
-        
-        .container:hover {
-            border: 1px solid rgba(161, 99, 247, 0.4);
-            box-shadow: 0 8px 32px rgba(161, 99, 247, 0.15);
-        }
-
-        /* Header */
-        h3 {
-            font-size: 1.75rem;
-            margin-bottom: 25px;
-            color: #fff;
-            letter-spacing: -0.5px;
-            font-weight: 600;
-        }
-        
-        /* Form elements */
-        form {
-            display: flex;
-            flex-direction: column;
-            gap: 18px;
-            margin-bottom: 30px;
-        }
-
-        #inputField {
-            width: 100%;
-            padding: 16px;
-            font-size: 1rem;
-            background-color: #2d2d2d;
-            color: #e0e0e0;
-            border: 1px solid #333333;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-            resize: vertical;
-            font-family: inherit;
-        }
-
-        #inputField::placeholder {
-            color: #777777;
-        }
-
-        #inputField:focus {
-            outline: none;
-            border-color: rgba(161, 99, 247, 0.8);
-            box-shadow: 0 0 0 2px rgba(161, 99, 247, 0.2);
-        }
-
-        #generateButton {
-            padding: 16px 20px;
-            background-color: #a163f7;
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        #generateButton:hover {
-            background-color: #8b47e3;
-            transform: translateY(-2px);
-        }
-        
-        #generateButton:active {
-            transform: translateY(0);
-        }
-
-        /* Audio Player */
-        .audio-container {
-            width: 100%;
-            padding: 15px;
-            background-color: #2d2d2d;
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            transition: all 0.3s ease;
-        }
-        
-        .audio-container:hover {
-            border-color: rgba(161, 99, 247, 0.4);
-        }
-
-        #audioPlayer {
-            width: 100%;
-            height: 40px;
-            outline: none;
-        }
-        
-        /* Recorder Container */
-        #recorderContainer {
-            margin-top: 30px;
-            background-color: #1e1e1e;
-            padding: 25px;
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
-            transition: all 0.3s ease;
-        }
-        
-        #recorderContainer:hover {
-            border-color: rgba(161, 99, 247, 0.4);
-        }
-        
-        #recorderContainer h1 {
-            font-size: 1.5rem;
-            margin-bottom: 15px;
-            color: #fff;
-        }
-        
-        #recordButton, #stopButton {
-            padding: 12px 20px;
-            background-color: #2d2d2d;
-            color: #e0e0e0;
-            border: 1px solid #333333;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-            width: 160px;
-        }
-        
-        #recordButton {
-            background-color: #e74c3c;
-            color: white;
-            border-color: #e74c3c;
-        }
-        
-        #recordButton:hover {
-            background-color: #c0392b;
-        }
-        
-        #stopButton:hover {
-            background-color: #3d3d3d;
-        }
-        
-        #recordingPlayer {
-            width: 100%;
-            margin-top: 10px;
-            height: 40px;
-            
-        }
-        
-        /* Mobile Responsiveness */
-        @media (max-width: 600px) {
-            body {
-                padding: 10px;
-            }
-            
-            .container {
-                padding: 25px;
-            }
-            
-            h3 {
-                font-size: 1.5rem;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 
 <body>
-    <div class="container">
+
+   <div class="main-container">
+     <div class="container">
         <h3>Text To Speech</h3>
         <form>
             <textarea
@@ -224,7 +34,22 @@
         <button id="stopButton">Stop Recording</button>
         <audio id="recordingPlayer" controls></audio>
     </div>
+   </div>
+
+    <!-- Uploading status on UI -->
+    <div id="uploadingContainer">
+      <span id="uploadingText">Uploading audio file</span>
+      <span id="uploadingPercentage"></span>
+    </div>
+
+    <!-- Result information display -->
+    <div id="resultContainer" >
+      <h4>Uploaded File Information</h4>
+      <span id="filename">Filename: </span>
+      <span id="contentType">Content Type: </span>
+      <span id="sizeKb">File Size: </span>
+    </div>
 
     <script src="static/main.js"></script>
-</body>
+  </body>
 </html>
