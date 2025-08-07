@@ -6,9 +6,12 @@ from murf import Murf
 from dotenv import load_dotenv
 import os
 import time
+import assemblyai as aai
 
 load_dotenv()
 MURF_API_KEY = os.getenv('MURF_API_KEY')
+aai.settings.api_key =  os.getenv('ASSEMBLYAI_API_KEY')
+print(aai.settings.api_key)
 
 
 app = FastAPI()
@@ -73,7 +76,15 @@ async def upload_file(file: UploadFile):
         print("Error uploading file:", str(e))
         return {"error": str(e)}
  
-
+@app.post('/transcribe/file/')
+async def transcribe_file(file: UploadFile):
+    try:
+        transcriber = aai.Transcriber()
+        transcript =  transcriber.transcribe(file.file)
+        print("transcript",transcript)
+        return {"transcript": transcript.text}
+    except Exception as e:
+        return {"error": str(e)}
 
 
 

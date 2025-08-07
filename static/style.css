@@ -236,7 +236,7 @@ form {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
-#resultContainer h1 {
+#resultContainer,#trContainer h1 {
   font-size: 1.2rem;
   color: #fff;
   margin-bottom: 10px;
@@ -244,13 +244,20 @@ form {
   letter-spacing: -0.5px;
 }
 
-#resultContainer span {
+#resultContainer,#trContainer span {
   font-size: 0.95rem;
   color: #e0e0e0;
   display: flex;
   justify-content: space-between;
   padding-bottom: 8px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#transcript {
+  color: #a163f7;
+  font-weight: 500;
+  font-size: 0.95rem;
+  font-style: italic
 }
 
 #resultContainer span:last-child {
@@ -270,6 +277,21 @@ form {
 #sizeKb {
   color: #a163f7;
   font-weight: 600;
+}
+
+#trContainer {
+  margin-top: 20px;
+  background-color: #1e1e1e;
+  padding: 20px 25px;
+  border-radius: 12px;
+  border: 1px solid rgba(161, 99, 247, 0.4);
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  transition: all 0.3s ease;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 /* Mobile Responsiveness */
