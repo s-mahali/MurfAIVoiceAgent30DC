@@ -56,22 +56,22 @@ navigator.mediaDevices
       console.log("clicked");
       mediaRecorder.start();
       console.log("started recording", mediaRecorder.state);
-      recordButton.style.background = "red";
+      //recordButton.style.background = "red";
       recordButton.innerText = "Recording in Progress";
       recordButton.disabled = true;
       recordButton.style.cursor = "not-allowed";
-      recordButton.style.color = "black";
+      //recordButton.style.color = "black";
     };
 
     stopRecordButton.onclick = () => {
       mediaRecorder.stop();
       console.log("stopped recording", mediaRecorder.state);
-      recordButton.style.background = "green";
+    recordButton.style.background = "green";
       recordButton.disabled = false;
       recordButton.style.cursor = "pointer";
-      recordButton.style.color = "";
-      recordButton.style.background = "";
-      stopRecordButton.style.color = "black";
+     // recordButton.style.color = "";
+     // recordButton.style.background = "";
+      //stopRecordButton.style.color = "black";
       recordButton.textContent = "Record Audio";
     };
 
@@ -81,12 +81,13 @@ navigator.mediaDevices
       const blob = new Blob(chunks, { type: "audio/ogg; codecs = opus" });
       chunks = [];
       const audioURL = URL.createObjectURL(blob);
-      recordingPlayer.src = audioURL;
+      // recordingPlayer.src = audioURL;
 
       // Upload Audio File to server temp_upload folder
       //uploadAudioFile(blob);
       try {
         transcribeFile(blob);
+        murfAudioPlayback(blob);
       } catch (error) {
         console.error("error transcribing audio file:", error?.message);
       }
@@ -203,7 +204,29 @@ const transcribeFile = async (file) => {
     setTimeout(() => {
       uploadingContainer.style.display = "none";
     }, 1000);
-  } 
+  }
 };
 
-// Just completed a voice-to-text transcription feature in my voice agent using FastAPI and JavaScript MediaRecorder. The app now seamlessly captures audio, sends it to the server, and returns a clean transcript with a simple user experience.
+//playback your audio through murf tts
+const murfAudioPlayback = async (file) => {
+  try {
+    const formData = new FormData();
+    formData.append("file", file, "recording.ogg");
+
+    const response = await fetch("/tts/echo", {
+      method: "POST",
+      body: formData,
+    });
+    if (response.ok) {
+      const data = await response.json();
+      console.log("data:", data);
+      recordingPlayer.src = data;
+      recordingPlayer.play();
+    }
+  } catch (error) {
+    console.error("error fetching audio content:", error?.message);
+  }
+};
+
+//Murf Day 7 
+// Today, I have enhanced the echo bot by transcribe the audio file and play it through murf tts. 

@@ -85,7 +85,40 @@ async def transcribe_file(file: UploadFile):
         return {"transcript": transcript.text}
     except Exception as e:
         return {"error": str(e)}
+    
+    #transcribe audio 
+def transcription(file: UploadFile):
+    try:
+        transcriber = aai.Transcriber()
+        transcript =  transcriber.transcribe(file.file)
+        print("transcript",transcript)
+        return {"transcript": transcript.text}
+    except Exception as e:
+        print("Error uploading file:", str(e))
+        return {"error": str(e)}    
 
+@app.post('/tts/echo/')
+async def tts_echo(file: UploadFile):
+    client = Murf(
+       api_key = MURF_API_KEY
+    )
+    transcribe_text = transcription(file)
+    print("transcribe_text", transcribe_text)
+    
+    if not file:
+        return {"error": "Missing text or file"}
+    if not isinstance(transcribe_text, dict) or "transcript" not in transcribe_text:
+        return {"error": "Transcription failed"}
+    res = client.text_to_speech.generate(
+     text = transcribe_text["transcript"],
+     voice_id="en-US-Ken",
+    
+    )  
+    
+    if not res.audio_file:
+        return {"error": "No audio file generated"}
+    print("audioURL: ",res.audio_file)
+    return res.audio_file
 
 
 
