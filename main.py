@@ -7,11 +7,12 @@ from dotenv import load_dotenv
 import os
 import time
 import assemblyai as aai
+from google import genai
 
 load_dotenv()
 MURF_API_KEY = os.getenv('MURF_API_KEY')
 aai.settings.api_key =  os.getenv('ASSEMBLYAI_API_KEY')
-print(aai.settings.api_key)
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
 
 app = FastAPI()
@@ -120,7 +121,24 @@ async def tts_echo(file: UploadFile):
     print("audioURL: ",res.audio_file)
     return res.audio_file
 
-
+@app.post('/llm/query')
+async def llm_query(payload: Payload):
+    try:
+        client = genai.Client()
+        
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=payload.text,
+           
+        )
+        
+        if(response.text):
+            return response.text
+        else:
+            return "No response"
+    except Exception as e:
+        return {"error": str(e)}
+        
 
 
 
