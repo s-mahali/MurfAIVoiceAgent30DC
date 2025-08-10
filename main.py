@@ -121,21 +121,59 @@ async def tts_echo(file: UploadFile):
     print("audioURL: ",res.audio_file)
     return res.audio_file
 
+# murf service 
+async def murf_audio(text: str):
+    client = Murf(
+       api_key = MURF_API_KEY
+    )
+    
+    if not text:
+        return {"error": "No text provided"}
+    res = client.text_to_speech.generate(
+     text=text,
+     voice_id="en-US-Ken",
+    
+    )  
+    
+    if not res.audio_file:
+        return {"error": "No audio file generated"}
+    
+    return res.audio_file
+
 @app.post('/llm/query')
-async def llm_query(payload: Payload):
+async def llm_query(file: UploadFile):
     try:
         client = genai.Client()
         
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=payload.text,
-           
+        # assemblyAI transcribe 
+        transcribed = transcription(file)
+        print("transcription", transcribed)
+        if not isinstance(transcribed, dict) or "transcript" not in transcribed:
+            return {"error": "Transcription failed"}
+        
+        prompts = (
+            "You are a helpful assistant that answers question.\n"
+            "Keep answer within 2500 characters only.\n"
+            f"question: {transcribed['transcript']}"
         )
         
-        if(response.text):
-            return response.text
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[prompts],
+        )
+        
+        if response:
+            answer_text = response.text
+            if len(answer_text) > 3000:
+                print(answer_text)
+                answer_text = answer_text[:3000]
+            # murfAI TTS
+            murf_response = await murf_audio(answer_text)
+            
+            print("murf_response", murf_response)
+            return murf_response
         else:
-            return "No response"
+            return "Sorry! I don't have an answer for that."
     except Exception as e:
         return {"error": str(e)}
         

@@ -30,7 +30,10 @@
 
     <div id="recorderContainer">
         <h1>Echo Bot</h1>
-        <button id="recordButton">Record Audio</button>
+        <div id="llmLoading" class="loading-indicator">
+            <span></span><span></span><span></span>
+        </div>
+        <button id="recordButton">Start Recording</button>
         <button id="stopButton">Stop Recording</button>
         <audio id="recordingPlayer" controls></audio>
     </div>

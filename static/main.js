@@ -11,6 +11,7 @@ const fileSize = document.getElementById("sizeKb");
 const resultContainer = document.getElementById("resultContainer");
 const trContainer = document.getElementById("trContainer");
 const transcriptElem = document.getElementById("transcript");
+const llmLoading = document.getElementById("llmLoading");
 
 let content = "";
 
@@ -66,11 +67,11 @@ navigator.mediaDevices
     stopRecordButton.onclick = () => {
       mediaRecorder.stop();
       console.log("stopped recording", mediaRecorder.state);
-    recordButton.style.background = "green";
+      recordButton.style.background = "green";
       recordButton.disabled = false;
       recordButton.style.cursor = "pointer";
-     // recordButton.style.color = "";
-     // recordButton.style.background = "";
+      // recordButton.style.color = "";
+      // recordButton.style.background = "";
       //stopRecordButton.style.color = "black";
       recordButton.textContent = "Record Audio";
     };
@@ -86,8 +87,9 @@ navigator.mediaDevices
       // Upload Audio File to server temp_upload folder
       //uploadAudioFile(blob);
       try {
-        transcribeFile(blob);
-        murfAudioPlayback(blob);
+        // transcribeFile(blob);
+        // murfAudioPlayback(blob);
+        fetchResponsefromllm(blob);
       } catch (error) {
         console.error("error transcribing audio file:", error?.message);
       }
@@ -228,5 +230,34 @@ const murfAudioPlayback = async (file) => {
   }
 };
 
-//Murf Day 7 
-// Today, I have enhanced the echo bot by transcribe the audio file and play it through murf tts. 
+const fetchResponsefromllm = async (file) => {
+   console.log("fetching response from llm...");
+   // --- Show loading state and disable buttons ---
+  llmLoading.classList.add("show");
+  recordingPlayer.classList.remove("show"); // Hide previous player
+  recordButton.disabled = true;
+  stopRecordButton.disabled = true;
+  try {
+    const formData = new FormData();
+    formData.append("file", file, "recording.ogg");
+
+    const response = await fetch("/llm/query", {
+      method: "POST",
+      body: formData,
+    });
+    if (response.ok) {
+      console.log("response from llm:");
+      const data = await response.json();
+      console.log("data:", data);
+      recordingPlayer.src = data;
+      recordingPlayer.play();
+    }
+  } catch (error) {
+    console.error("error fetching llm response:", error?.message);
+  }finally {
+    // --- Hide loading state and re-enable buttons ---
+    llmLoading.classList.remove("show");
+    recordButton.disabled = false;
+    stopRecordButton.disabled = false;
+  }
+};
