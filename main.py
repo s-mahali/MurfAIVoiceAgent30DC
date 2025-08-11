@@ -9,6 +9,8 @@ import time
 import assemblyai as aai
 from google import genai
 
+
+
 load_dotenv()
 MURF_API_KEY = os.getenv('MURF_API_KEY')
 aai.settings.api_key =  os.getenv('ASSEMBLYAI_API_KEY')
@@ -176,6 +178,80 @@ async def llm_query(file: UploadFile):
             return "Sorry! I don't have an answer for that."
     except Exception as e:
         return {"error": str(e)}
+    
+#Day 10 llm with history context 
+
+#Dictionary to create or retrieve a session 
+active_sessions = {}
+#function to create or retrieve a session
+def get_or_create_session(session_id: str):
+    if session_id not in active_sessions:
+        #create a new session with Gemini chat 
+        client = genai.Client()
+        chat = client.chats.create(model="gemini-2.5-flash")
+        active_sessions[session_id] = {
+            "chat": chat,
+            "history": [
+               { "role": "system",
+                "content": "You are a helpful assistant that answers questions accurately and concisely."
+               }
+            ],
+            "last_used": time.time()
+        }
+    else:
+        #update last used timestamp
+        active_sessions[session_id]["last_used"] = time.time()
+    return active_sessions[session_id]        
+
+@app.post('/agent/chat/{session_id}')
+async def agent_chat(file: UploadFile, session_id: str):
+    try:
+        #get or create session
+        session = get_or_create_session(session_id)
+        chat = session["chat"]
+        
+        # assemblyAI transcribe 
+        transcribed = transcription(file)
+        print("transcription", transcribed)
+        
+        if not isinstance(transcribed, dict) or "transcript" not in transcribed:
+            return {"error": "Transcription failed"}
+        
+        user_message = transcribed["transcript"]
+        
+        #add user_message to history
+        session["history"].append({
+            "role": "user",
+            "content": user_message
+        })
+        response = chat.send_message(
+            user_message
+        )
+        print("response1", response.text)
+        
+        if response:
+            answer_text = response.text
+            if len(answer_text) > 3000:
+                print(answer_text)
+                answer_text = answer_text[:3000]
+                
+            #add assistant_response to history
+            session["history"].append({
+                "role": "assistant",
+                 "content": answer_text
+            })    
+            # murfAI TTS
+            murf_response = await murf_audio(answer_text)
+            
+            print("murf_response", murf_response)
+            return murf_response
+        else:
+            return {"error": "Sorry! No response from assistant."}
+    except Exception as e:
+        return {"error": str(e)}
+    
+
+
         
 
 

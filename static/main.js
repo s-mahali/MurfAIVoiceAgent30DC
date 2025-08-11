@@ -12,6 +12,8 @@ const resultContainer = document.getElementById("resultContainer");
 const trContainer = document.getElementById("trContainer");
 const transcriptElem = document.getElementById("transcript");
 const llmLoading = document.getElementById("llmLoading");
+const botListening = document.getElementById("botListening");
+const botSpeaking = document.getElementById("botSpeaking");
 
 let content = "";
 
@@ -61,7 +63,10 @@ navigator.mediaDevices
       recordButton.innerText = "Recording in Progress";
       recordButton.disabled = true;
       recordButton.style.cursor = "not-allowed";
-      //recordButton.style.color = "black";
+
+      //show the listening animation
+      botListening.classList.add("active");
+      
     };
 
     stopRecordButton.onclick = () => {
@@ -74,6 +79,7 @@ navigator.mediaDevices
       // recordButton.style.background = "";
       //stopRecordButton.style.color = "black";
       recordButton.textContent = "Record Audio";
+      botListening.classList.remove("active");
     };
 
     mediaRecorder.onstop = (e) => {
@@ -231,33 +237,50 @@ const murfAudioPlayback = async (file) => {
 };
 
 const fetchResponsefromllm = async (file) => {
-   console.log("fetching response from llm...");
-   // --- Show loading state and disable buttons ---
+  console.log("fetching response from llm...");
+  // --- Show loading state and disable buttons ---
   llmLoading.classList.add("show");
   recordingPlayer.classList.remove("show"); // Hide previous player
   recordButton.disabled = true;
   stopRecordButton.disabled = true;
+  let sessionId = localStorage.getItem("sessionId");
+  if (!sessionId) {
+    sessionId = Date.now().toString();
+    localStorage.setItem("sessionId", sessionId);
+  }
+
+  console.log("fetching response from llm with session:", sessionId);
   try {
     const formData = new FormData();
     formData.append("file", file, "recording.ogg");
 
-    const response = await fetch("/llm/query", {
+    const response = await fetch(`/agent/chat/${sessionId}`, {
       method: "POST",
       body: formData,
     });
     if (response.ok) {
-      console.log("response from llm:");
-      const data = await response.json();
+      const data = await response?.json();
       console.log("data:", data);
+       botSpeaking.classList.add("active");
+
       recordingPlayer.src = data;
+      recordingPlayer.classList.add("show");
+      recordingPlayer.onplay = () => {
+        botSpeaking.classList.add("active");
+      };
+      
+      recordingPlayer.onended = () => {
+        botSpeaking.classList.remove("active");
+      };
       recordingPlayer.play();
     }
   } catch (error) {
     console.error("error fetching llm response:", error?.message);
-  }finally {
+  } finally {
     // --- Hide loading state and re-enable buttons ---
     llmLoading.classList.remove("show");
     recordButton.disabled = false;
     stopRecordButton.disabled = false;
+    botListening.classList.remove("active");
   }
 };
