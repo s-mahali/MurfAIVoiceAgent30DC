@@ -16,7 +16,7 @@
             <textarea
              placeholder="Enter your text here..."
              id="inputField"
-             rows="4"
+             rows="2"
              required
             ></textarea>
             <button id="generateButton">Generate Audio</button>
@@ -47,8 +47,13 @@
         <div id="llmLoading" class="loading-indicator">
             <span></span><span></span><span></span>
         </div>
-        <button id="recordButton">Start Recording</button>
-        <button id="stopButton">Stop Recording</button>
+        <div id="errorContainer">
+          <p id="errorText"></p>
+        </div>
+        <div class="record-btn-container">
+          <button id="recordButton">Start Recording</button>
+          <button id="stopButton">Stop Recording</button>
+        </div>
         <audio id="recordingPlayer" controls></audio>
     </div>
    </div>

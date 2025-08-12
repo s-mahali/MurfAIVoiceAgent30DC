@@ -14,6 +14,8 @@ const transcriptElem = document.getElementById("transcript");
 const llmLoading = document.getElementById("llmLoading");
 const botListening = document.getElementById("botListening");
 const botSpeaking = document.getElementById("botSpeaking");
+const errorContainer = document.getElementById("errorContainer");
+const errorText = document.getElementById("errorText");
 
 let content = "";
 
@@ -66,13 +68,11 @@ navigator.mediaDevices
 
       //show the listening animation
       botListening.classList.add("active");
-      
     };
 
     stopRecordButton.onclick = () => {
       mediaRecorder.stop();
       console.log("stopped recording", mediaRecorder.state);
-      recordButton.style.background = "green";
       recordButton.disabled = false;
       recordButton.style.cursor = "pointer";
       // recordButton.style.color = "";
@@ -109,6 +109,8 @@ navigator.mediaDevices
   })
   .catch((err) => {
     console.error(`The following error occurred: ${err}`);
+    errorContainer.style.display = "flex";
+    errorText.innerText = `Error: ${err}`;
   });
 
 const uploadingContainer = document.getElementById("uploadingContainer");
@@ -261,21 +263,44 @@ const fetchResponsefromllm = async (file) => {
     if (response.ok) {
       const data = await response?.json();
       console.log("data:", data);
-       botSpeaking.classList.add("active");
+      botSpeaking.classList.add("active");
 
-      recordingPlayer.src = data;
+      recordingPlayer.src = data.audio;
       recordingPlayer.classList.add("show");
       recordingPlayer.onplay = () => {
         botSpeaking.classList.add("active");
       };
-      
+
       recordingPlayer.onended = () => {
         botSpeaking.classList.remove("active");
       };
       recordingPlayer.play();
+    } else {
+      if (data.audio) {
+        recordingPlayer.src = data.audio;
+        recordingPlayer.classList.add("show");
+        recordingPlayer.onplay = () => {
+          botSpeaking.classList.add("active");
+        };
+        recordingPlayer.onended = () => {
+          botSpeaking.classList.remove("active");
+        };
+        recordingPlayer.play();
+      }
+      errorContainer.style.display = "flex";
+      errorText.innerText = `Error: ${
+        data.text || "An unexpected error occurred."
+      }`;
     }
   } catch (error) {
     console.error("error fetching llm response:", error?.message);
+    llmLoading.classList.remove("show");
+    recordButton.disabled = false;
+    stopRecordButton.disabled = false;
+    botListening.classList.remove("active");
+    botSpeaking.classList.remove("active");
+    errorContainer.style.display = "flex";
+    errorText.innerText = `Error: I'm having trouble processing your request. Please try again later.`;
   } finally {
     // --- Hide loading state and re-enable buttons ---
     llmLoading.classList.remove("show");

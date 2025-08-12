@@ -1,7 +1,7 @@
-from fastapi import FastAPI, UploadFile
+from fastapi import FastAPI, UploadFile, HTTPException
 from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from murf import Murf
 from dotenv import load_dotenv
 import os
@@ -24,20 +24,18 @@ class Payload(BaseModel):
     text: str
     
     
-
-
 @app.get("/")
 async def root():
     return FileResponse("static/index.html")
 
-@app.post("/audio")
+@app.post("/audio", status_code=200)
 async def generateAudio(payload: Payload):
     client = Murf(
        api_key = MURF_API_KEY
     )
     
     if not payload.text:
-        return {"error": "No text provided"}
+        raise HTTPException(status_code=400, detail="Missing text")
     res = client.text_to_speech.generate(
      text=payload.text,
      voice_id="en-US-Ken",
@@ -45,12 +43,12 @@ async def generateAudio(payload: Payload):
     )  
     
     if not res.audio_file:
-        return {"error": "No audio file generated"}
+        raise HTTPException(status_code=500, detail="No audio file generated")
     
     return res.audio_file   
 
 
-@app.post('/upload/')
+@app.post('/upload/', status_code=200)
 async def upload_file(file: UploadFile):
     try:
         # Create temp_upload directory if it doesn't exist
@@ -76,31 +74,37 @@ async def upload_file(file: UploadFile):
             "size_kb": round(file_size, 2)
         }
     except Exception as e:
-        print("Error uploading file:", str(e))
-        return {"error": str(e)}
+        raise HTTPException(status_code=500, detail=str(e))
+        
  
-@app.post('/transcribe/file/')
+@app.post('/transcribe/file/', status_code=200)
 async def transcribe_file(file: UploadFile):
     try:
         transcriber = aai.Transcriber()
-        transcript =  transcriber.transcribe(file.file)
-        print("transcript",transcript)
+        transcript = transcriber.transcribe(file.file)
+        print("transcript", transcript)
+        # Handle missing or empty transcript text
+        if not transcript or not getattr(transcript, "text", None) or not transcript.text.strip():
+            return {"error": "Nothing to transcribe"}
         return {"transcript": transcript.text}
     except Exception as e:
-        return {"error": str(e)}
+        raise HTTPException(status_code=500, detail=str(e))
     
     #transcribe audio 
 def transcription(file: UploadFile):
     try:
         transcriber = aai.Transcriber()
-        transcript =  transcriber.transcribe(file.file)
-        print("transcript",transcript)
+        transcript = transcriber.transcribe(file.file)
+        # Handle missing or empty transcript text
+        if not transcript or not getattr(transcript, "text", None) or not transcript.text.strip():
+            return {"error": "Nothing to transcribe"}
+        print("transcript", transcript)
         return {"transcript": transcript.text}
     except Exception as e:
         print("Error uploading file:", str(e))
         return {"error": str(e)}    
 
-@app.post('/tts/echo/')
+@app.post('/tts/echo/', status_code=200)
 async def tts_echo(file: UploadFile):
     client = Murf(
        api_key = MURF_API_KEY
@@ -109,7 +113,7 @@ async def tts_echo(file: UploadFile):
     print("transcribe_text", transcribe_text)
     
     if not file:
-        return {"error": "Missing text or file"}
+        raise HTTPException(status_code=400, detail="Missing file")
     if not isinstance(transcribe_text, dict) or "transcript" not in transcribe_text:
         return {"error": "Transcription failed"}
     res = client.text_to_speech.generate(
@@ -119,7 +123,7 @@ async def tts_echo(file: UploadFile):
     )  
     
     if not res.audio_file:
-        return {"error": "No audio file generated"}
+        raise HTTPException(status_code=500, detail="No audio file generated")
     print("audioURL: ",res.audio_file)
     return res.audio_file
 
@@ -130,7 +134,7 @@ async def murf_audio(text: str):
     )
     
     if not text:
-        return {"error": "No text provided"}
+        return {"error": "Missing text"}
     res = client.text_to_speech.generate(
      text=text,
      voice_id="en-US-Ken",
@@ -142,7 +146,7 @@ async def murf_audio(text: str):
     
     return res.audio_file
 
-@app.post('/llm/query')
+@app.post('/llm/query', status_code=200)
 async def llm_query(file: UploadFile):
     try:
         client = genai.Client()
@@ -151,7 +155,7 @@ async def llm_query(file: UploadFile):
         transcribed = transcription(file)
         print("transcription", transcribed)
         if not isinstance(transcribed, dict) or "transcript" not in transcribed:
-            return {"error": "Transcription failed"}
+            raise HTTPException(status_code=400, detail="Transcription failed")
         
         prompts = (
             "You are a helpful assistant that answers question.\n"
@@ -177,7 +181,7 @@ async def llm_query(file: UploadFile):
         else:
             return "Sorry! I don't have an answer for that."
     except Exception as e:
-        return {"error": str(e)}
+        raise HTTPException(status_code=500, detail=str(e))
     
 #Day 10 llm with history context 
 
@@ -203,7 +207,7 @@ def get_or_create_session(session_id: str):
         active_sessions[session_id]["last_used"] = time.time()
     return active_sessions[session_id]        
 
-@app.post('/agent/chat/{session_id}')
+@app.post('/agent/chat/{session_id}', status_code=200)
 async def agent_chat(file: UploadFile, session_id: str):
     try:
         #get or create session
@@ -215,7 +219,15 @@ async def agent_chat(file: UploadFile, session_id: str):
         print("transcription", transcribed)
         
         if not isinstance(transcribed, dict) or "transcript" not in transcribed:
-            return {"error": "Transcription failed"}
+              return JSONResponse(
+                status_code=400,
+                content={
+                "audio": murf_response,
+                "text": fallback_text,
+                "error_type": "general_error",
+                
+                }
+            )
         
         user_message = transcribed["transcript"]
         
@@ -229,7 +241,7 @@ async def agent_chat(file: UploadFile, session_id: str):
         )
         print("response1", response.text)
         
-        if response:
+        if response.text:
             answer_text = response.text
             if len(answer_text) > 3000:
                 print(answer_text)
@@ -244,11 +256,42 @@ async def agent_chat(file: UploadFile, session_id: str):
             murf_response = await murf_audio(answer_text)
             
             print("murf_response", murf_response)
-            return murf_response
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "audio": murf_response,
+                    "text": answer_text,
+                    "history": session["history"][-5:]
+                }
+            )
         else:
-            return {"error": "Sorry! No response from assistant."}
+            #fallback
+            fallback_text = "I'm having trouble processing your request. Please try again later."
+            murf_response = await murf_audio(fallback_text)
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "audio": murf_response,
+                    "text": fallback_text,
+                    
+                    
+                }
+            )
     except Exception as e:
-        return {"error": str(e)}
+        # Graceful fallback on unexpected errors
+        fallback_text = "I'm having trouble processing your request. Please try again later."
+        murf_response = await murf_audio(fallback_text)
+        return JSONResponse(
+            status_code=500,
+            content={
+                "audio": murf_response,
+                "text": fallback_text,
+                
+                }
+        )
+               
+        
+        
     
 
 
