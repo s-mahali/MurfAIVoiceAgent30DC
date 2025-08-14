@@ -1,5 +1,5 @@
-const inputField = document.getElementById("inputField");
-const generateButton = document.getElementById("generateButton");
+// const inputField = document.getElementById("inputField");
+// const generateButton = document.getElementById("generateButton");
 const audioPlayer = document.getElementById("audioPlayer");
 const recordButton = document.getElementById("recordButton");
 const stopRecordButton = document.getElementById("stopButton");
@@ -16,33 +16,56 @@ const botListening = document.getElementById("botListening");
 const botSpeaking = document.getElementById("botSpeaking");
 const errorContainer = document.getElementById("errorContainer");
 const errorText = document.getElementById("errorText");
+//const chatWindow = document.getElementById("chatWindow");
 
 let content = "";
 
-async function fetchAudioContent(e) {
-  e.preventDefault();
-  try {
-    content = inputField.value;
-    console.log("content:", content);
-    const response = await fetch("/audio", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ text: content }),
-    });
-    if (response) {
-      const audioResponse = await response.json();
-      audioPlayer.src = audioResponse;
-      audioPlayer.play();
-      inputField.value = "";
-    }
-  } catch (error) {
-    console.error("error fetching audio content:", error?.message);
-  }
-}
+// async function fetchAudioContent(e) {
+//   e.preventDefault();
+//   try {
+//     content = inputField.value;
+//     console.log("content:", content);
+//     const response = await fetch("/audio", {
+//       method: "POST",
+//       headers: {
+//         "Content-Type": "application/json",
+//       },
+//       body: JSON.stringify({ text: content }),
+//     });
+//     if (response) {
+//       const audioResponse = await response.json();
+//       audioPlayer.src = audioResponse;
+//       audioPlayer.play();
+//       inputField.value = "";
+//     }
+//   } catch (error) {
+//     console.error("error fetching audio content:", error?.message);
+//   }
+// }
 
-generateButton.addEventListener("click", fetchAudioContent);
+// generateButton.addEventListener("click", fetchAudioContent);
+
+// function appendMessage(text, sender="user", audioUrl = null){
+//   const msgDiv = document.createElement("div");
+//   msgDiv.className = `chat-message ${sender}`;
+//   const bubble = document.createElement("div");
+//   bubble.className="chat-bubble";
+//   bubble.textContent = text;
+//   msgDiv.appendChild(bubble);
+
+//   // If there's audio, add an audio player
+//   if (audioUrl) {
+//     const audioElem = document.createElement("audio");
+//     audioElem.controls = true;
+//     audioElem.src = audioUrl;
+//     audioElem.style.marginTop = "6px";
+//     msgDiv.appendChild(audioElem);
+//   }
+
+//   chatWindow.appendChild(msgDiv);
+//   chatWindow.scrollTop = chatWindow.scrollHeight;
+
+// }
 
 //Day-4
 if (navigator.mediaDevices) {
@@ -62,7 +85,6 @@ navigator.mediaDevices
       mediaRecorder.start();
       console.log("started recording", mediaRecorder.state);
       //recordButton.style.background = "red";
-      recordButton.innerText = "Recording in Progress";
       recordButton.disabled = true;
       recordButton.style.cursor = "not-allowed";
 
@@ -78,22 +100,22 @@ navigator.mediaDevices
       // recordButton.style.color = "";
       // recordButton.style.background = "";
       //stopRecordButton.style.color = "black";
-      recordButton.textContent = "Record Audio";
+      // recordButton.textContent = "Record Audio";
       botListening.classList.remove("active");
     };
 
-    mediaRecorder.onstop = (e) => {
+    mediaRecorder.onstop = async (e) => {
       console.log("data available after MediaRecorder.stop() called.");
 
       const blob = new Blob(chunks, { type: "audio/ogg; codecs = opus" });
       chunks = [];
       const audioURL = URL.createObjectURL(blob);
+      let transcript = "";
       // recordingPlayer.src = audioURL;
-
       // Upload Audio File to server temp_upload folder
       //uploadAudioFile(blob);
       try {
-        // transcribeFile(blob);
+        //transcript = await transcribeFile(blob);
         // murfAudioPlayback(blob);
         fetchResponsefromllm(blob);
       } catch (error) {
@@ -185,9 +207,9 @@ const uploadingPercentage = document.getElementById("uploadingPercentage");
 // };
 
 const transcribeFile = async (file) => {
-  uploadingContainer.style.display = "flex";
-  uploadingText.innerText = "Transcribing your audio file...";
-  uploadingPercentage.innerText = "";
+  // uploadingContainer.style.display = "flex";
+  // uploadingText.innerText = "Transcribing your audio file...";
+  // uploadingPercentage.innerText = "";
   try {
     const formData = new FormData();
     formData.append("file", file, "recording.ogg");
@@ -200,20 +222,21 @@ const transcribeFile = async (file) => {
     if (response.ok) {
       const data = await response.json();
       // Very simple UI update with just the transcript
-      trContainer.style.display = "flex";
-      transcriptElem.innerText = `Transcript: ${data.transcript}`;
+      // trContainer.style.display = "flex";
+      // transcriptElem.innerText = `Transcript: ${data.transcript}`;
+      return data.transcript;
     }
 
     // Hide the transcribing message after 2 seconds
-    setTimeout(() => {
-      uploadingContainer.style.display = "none";
-    }, 3000);
+    // setTimeout(() => {
+    //   uploadingContainer.style.display = "none";
+    // }, 3000);
   } catch (error) {
     console.error("Error transcribing audio file:", error?.message);
     // Just hide the message on error, no error displayed to user
-    setTimeout(() => {
-      uploadingContainer.style.display = "none";
-    }, 1000);
+    // setTimeout(() => {
+    //   uploadingContainer.style.display = "none";
+    // }, 1000);
   }
 };
 
@@ -266,7 +289,7 @@ const fetchResponsefromllm = async (file) => {
       botSpeaking.classList.add("active");
 
       recordingPlayer.src = data.audio;
-      recordingPlayer.classList.add("show");
+      //recordingPlayer.classList.add("show");
       recordingPlayer.onplay = () => {
         botSpeaking.classList.add("active");
       };
@@ -278,7 +301,6 @@ const fetchResponsefromllm = async (file) => {
     } else {
       if (data.audio) {
         recordingPlayer.src = data.audio;
-        recordingPlayer.classList.add("show");
         recordingPlayer.onplay = () => {
           botSpeaking.classList.add("active");
         };
@@ -294,7 +316,7 @@ const fetchResponsefromllm = async (file) => {
     }
   } catch (error) {
     console.error("error fetching llm response:", error?.message);
-    llmLoading.classList.remove("show");
+    // llmLoading.classList.remove("show");
     recordButton.disabled = false;
     stopRecordButton.disabled = false;
     botListening.classList.remove("active");

@@ -1,16 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Murf30Days</title>
-    <link rel="stylesheet" href="/static/style.css">
-</head>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
 
-<body>
-
-   <div class="main-container">
-     <div class="container">
+  <body>
+    <div class="main-container">
+      <!-- <div class="container">
         <h3>Text To Speech</h3>
         <form>
             <textarea
@@ -26,43 +25,50 @@
               Your browser does not support the audio element.
             </audio>
         </div>
-    </div>
-
-    <div id="recorderContainer">
-        <h1>Echo Bot</h1>
+    </div> -->
+       <div class="imageContainer">
+         <img src="/static/robot.png" alt="robot" />
+       </div>
+      <div id="recorderContainer">
+        <h1>AI Conversational Assistant 🤖</h1>
         <div id="botStatus">
-          <div id="botListening" class="bot-state"> 
-             <div class="listening-animation">
+          <div id="botListening" class="bot-state">
+            <div class="listening-animation">
               <span></span><span></span><span></span><span></span>
-             </div>
-               <p>Echo Bot is listening...</p>
+            </div>
+            <p>Echo Bot is listening...</p>
           </div>
           <div id="botSpeaking" class="bot-state">
-             <div class="speaking-animation">
-               <span></span><span></span><span></span><span></span>
-             </div>
-              <p>Echo Bot is yapping...</p>
+            <div class="speaking-animation">
+              <span></span><span></span><span></span><span></span>
+            </div>
+            <p>Echo Bot is yapping...</p>
           </div>
         </div>
         <div id="llmLoading" class="loading-indicator">
-            <span></span><span></span><span></span>
+          <span></span><span></span><span></span>
         </div>
         <div id="errorContainer">
           <p id="errorText"></p>
         </div>
+         <!-- <div id="chatWindow" class="chat-window">
+            Message will be appended here 
+         </div>
+        -->
+         
         <div class="record-btn-container">
           <button id="recordButton">Start Recording</button>
           <button id="stopButton">Stop Recording</button>
         </div>
         <audio id="recordingPlayer" controls></audio>
+      </div>
     </div>
-   </div>
 
-    <!-- Uploading status on UI -->
+    <!-- Uploading status on UI
     <div id="uploadingContainer">
       <span id="uploadingText">Uploading audio file</span>
       <span id="uploadingPercentage"></span>
-    </div>
+    </div> -->
 
     <!-- Result information display -->
     <!-- <div id="resultContainer">
@@ -72,10 +78,10 @@
       <span id="sizeKb">File Size: </span>
     </div> -->
 
-    <div id="trContainer">
+    <!-- <div id="trContainer">
       <span id="transcript">Transcription: </span>
       
-    </div>
+    </div> -->
 
     <script src="static/main.js"></script>
   </body>
