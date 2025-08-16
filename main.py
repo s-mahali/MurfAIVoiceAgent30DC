@@ -8,7 +8,8 @@ import os
 import time
 import assemblyai as aai
 from google import genai
-
+from services.murf_service import murf_tts
+from services.assembly_service import transcription
 
 
 load_dotenv()
@@ -91,18 +92,7 @@ async def transcribe_file(file: UploadFile):
         raise HTTPException(status_code=500, detail=str(e))
     
     #transcribe audio 
-def transcription(file: UploadFile):
-    try:
-        transcriber = aai.Transcriber()
-        transcript = transcriber.transcribe(file.file)
-        # Handle missing or empty transcript text
-        if not transcript or not getattr(transcript, "text", None) or not transcript.text.strip():
-            return {"error": "Nothing to transcribe"}
-        print("transcript", transcript)
-        return {"transcript": transcript.text}
-    except Exception as e:
-        print("Error uploading file:", str(e))
-        return {"error": str(e)}    
+   
 
 @app.post('/tts/echo/', status_code=200)
 async def tts_echo(file: UploadFile):
@@ -127,24 +117,7 @@ async def tts_echo(file: UploadFile):
     print("audioURL: ",res.audio_file)
     return res.audio_file
 
-# murf service 
-async def murf_audio(text: str):
-    client = Murf(
-       api_key = MURF_API_KEY
-    )
-    
-    if not text:
-        return {"error": "Missing text"}
-    res = client.text_to_speech.generate(
-     text=text,
-     voice_id="en-US-Ken",
-    
-    )  
-    
-    if not res.audio_file:
-        return {"error": "No audio file generated"}
-    
-    return res.audio_file
+
 
 @app.post('/llm/query', status_code=200)
 async def llm_query(file: UploadFile):
@@ -183,8 +156,7 @@ async def llm_query(file: UploadFile):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
-#Day 10 llm with history context 
-
+#llm with history context 
 #Dictionary to create or retrieve a session 
 active_sessions = {}
 #function to create or retrieve a session
@@ -222,7 +194,7 @@ async def agent_chat(file: UploadFile, session_id: str):
               return JSONResponse(
                 status_code=400,
                 content={
-                "audio": murf_response,
+                "audio": murf_response["audio_file"],
                 "text": fallback_text,
                 "error_type": "general_error",
                 
@@ -253,13 +225,13 @@ async def agent_chat(file: UploadFile, session_id: str):
                  "content": answer_text
             })    
             # murfAI TTS
-            murf_response = await murf_audio(answer_text)
+            murf_response = await murf_tts(answer_text)
             
             print("murf_response", murf_response)
             return JSONResponse(
                 status_code=200,
                 content={
-                    "audio": murf_response,
+                    "audio": murf_response["audio_file"],
                     "text": answer_text,
                     "history": session["history"][-5:]
                 }
@@ -267,11 +239,11 @@ async def agent_chat(file: UploadFile, session_id: str):
         else:
             #fallback
             fallback_text = "I'm having trouble processing your request. Please try again later."
-            murf_response = await murf_audio(fallback_text)
+            murf_response = await murf_tts(fallback_text)
             return JSONResponse(
                 status_code=500,
                 content={
-                    "audio": murf_response,
+                    "audio": murf_response["audio_file"],
                     "text": fallback_text,
                     
                     
@@ -280,11 +252,11 @@ async def agent_chat(file: UploadFile, session_id: str):
     except Exception as e:
         # Graceful fallback on unexpected errors
         fallback_text = "I'm having trouble processing your request. Please try again later."
-        murf_response = await murf_audio(fallback_text)
+        murf_response = await murf_tts(fallback_text)
         return JSONResponse(
             status_code=500,
             content={
-                "audio": murf_response,
+                "audio": murf_response["audio_file"],
                 "text": fallback_text,
                 
                 }

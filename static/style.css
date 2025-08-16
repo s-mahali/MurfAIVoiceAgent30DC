@@ -524,24 +524,20 @@ form {
   margin-bottom: 10px;
 }
 
-
 .main-container {
-   display: flex;
-   width: 100%;
-   padding: 5%;
-   justify-content: space-between;
-   gap: 20px;
-   align-items: center;
-   overflow: hidden;
-   
+  display: flex;
+  width: 100%;
+  padding: 5%;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+  overflow: hidden;
 }
-
 
 /* Conversational agent  */
 .imageContainer {
   display: flex;
   align-items: start;
-  
 }
 
 .imageContainer img {
@@ -598,4 +594,45 @@ form {
   margin-top: 6px;
   width: 220px;
   outline: none;
+}
+
+@media (max-width: 900px) {
+  .imageContainer {
+    display: none;
+  }
+  .imageContainer img {
+    display: none;
+  }
+
+  #recorderContainer {
+    background-color: #1e1e1e;
+    padding: 25px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    transition: all 0.3s ease;
+    width: 100%;
+    max-width: 500px;
+  }
+
+  .main-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  
+}
+.container{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  min-height: 100vh;
+  max-width: 500px;
+  justify-content: center;
+}
 }
