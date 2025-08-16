@@ -47,7 +47,7 @@ A conversational AI assistant web app that enables voice-based chat between user
 
 ### 1. Clone the repository
 ```sh
-git clone <>
+git clone <https://github.com/s-mahali/MurfAIVoiceAgent30DC.git>
 cd Murf30Days
 ```
 ### setup project
@@ -84,6 +84,13 @@ Visit [http://127.0.0.1:8000](http://127.0.0.1:8000) in your browser.
 - `/transcribe/file` : Transcribes uploaded audio
 - `/agent/chat/<session_id>` : Handles chat logic with history context (voice in, bot voice/text out) 
 - `/tts/echo` : Text-to-speech for bot replies
+
+---
+
+---
+## API Freetier and Rate Limiting
+- Murf AI -- free 3$   $0.03per 1,000 characters,  concurrency limit 5
+  
 
 ---
 
