@@ -1,4 +1,5 @@
-from fastapi import FastAPI, UploadFile, HTTPException
+from fastapi import FastAPI, UploadFile, HTTPException, WebSocket
+from fastapi.websockets import WebSocketDisconnect
 from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
@@ -262,7 +263,22 @@ async def agent_chat(file: UploadFile, session_id: str):
                 }
         )
                
-        
+#websocket endpoint
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    print("✅ websocket connection open")
+    try:
+        while True:
+         #receive the message
+         data = await websocket.receive_text()
+         print("received data", data)
+         
+        #send the same message back to the user
+         await websocket.send_text(f"Message text was: {data}")  
+    except WebSocketDisconnect:
+        print("❌websocket connection closed")     
+    
         
     
 
