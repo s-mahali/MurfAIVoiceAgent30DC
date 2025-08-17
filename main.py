@@ -1,4 +1,5 @@
-from fastapi import FastAPI, UploadFile, HTTPException
+from fastapi import FastAPI, UploadFile, HTTPException, WebSocket
+from fastapi.websockets import WebSocketDisconnect
 from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
@@ -10,7 +11,8 @@ import assemblyai as aai
 from google import genai
 from services.murf_service import murf_tts
 from services.assembly_service import transcription
-
+import uuid
+from services.socket import save_audio_chunk
 
 load_dotenv()
 MURF_API_KEY = os.getenv('MURF_API_KEY')
@@ -262,7 +264,34 @@ async def agent_chat(file: UploadFile, session_id: str):
                 }
         )
                
+#websocket endpoint
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    print("✅ websocket connection open")
+    session_id = str(uuid.uuid4())
+    file_path = None
+    try:
+        while True:
+         #receive the message
+         data = await websocket.receive_bytes()
+         print("receiving data")
+         if not data:
+             continue
+         
+         #save the audio chunk
+         file_path = await save_audio_chunk(data, session_id)
+         #send acknowledgement back to the client
+         await websocket.send_json({"status": "received audio chunk", "session_id": session_id})
+         
+    except WebSocketDisconnect:
+        print("❌websocket connection closed")
         
+        
+    except Exception as e:
+        print("Error in websocket endpoint:", str(e))
+             
+    
         
     
 

@@ -9,26 +9,9 @@
 
   <body>
     <div class="main-container">
-      <!-- <div class="container">
-        <h3>Text To Speech</h3>
-        <form>
-            <textarea
-             placeholder="Enter your text here..."
-             id="inputField"
-             rows="2"
-             required
-            ></textarea>
-            <button id="generateButton">Generate Audio</button>
-        </form>
-        <div class="audio-container">
-            <audio controls id="audioPlayer">
-              Your browser does not support the audio element.
-            </audio>
-        </div>
-    </div> -->
-       <div class="imageContainer">
-         <img src="/static/robot.png" alt="robot" />
-       </div>
+      <div class="imageContainer">
+        <img src="/static/robot.png" alt="robot" />
+      </div>
       <div id="recorderContainer">
         <h1>AI Conversational Assistant 🤖</h1>
         <div id="botStatus">
@@ -51,37 +34,20 @@
         <div id="errorContainer">
           <p id="errorText"></p>
         </div>
-         <!-- <div id="chatWindow" class="chat-window">
-            Message will be appended here 
-         </div>
-        -->
-         
+
         <div class="record-btn-container">
           <button id="recordButton">Start Recording</button>
           <button id="stopButton">Stop Recording</button>
         </div>
+        <div id="streamingStatus" class="streaming-status">
+          <!-- <div class="streaming-animation">
+            <span></span><span></span><span></span><span></span>
+          </div>
+          <p>Streaming audio...</p>
+        </div> -->
         <audio id="recordingPlayer" controls></audio>
       </div>
     </div>
-
-    <!-- Uploading status on UI
-    <div id="uploadingContainer">
-      <span id="uploadingText">Uploading audio file</span>
-      <span id="uploadingPercentage"></span>
-    </div> -->
-
-    <!-- Result information display -->
-    <!-- <div id="resultContainer">
-      <h4>Uploaded File Information</h4>
-      <span id="filename">Filename: </span>
-      <span id="contentType">Content Type: </span>
-      <span id="sizeKb">File Size: </span>
-    </div> -->
-
-    <!-- <div id="trContainer">
-      <span id="transcript">Transcription: </span>
-      
-    </div> -->
 
     <script src="static/main.js"></script>
   </body>
