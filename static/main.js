@@ -20,54 +20,41 @@ const errorText = document.getElementById("errorText");
 
 let content = "";
 
-// async function fetchAudioContent(e) {
-//   e.preventDefault();
-//   try {
-//     content = inputField.value;
-//     console.log("content:", content);
-//     const response = await fetch("/audio", {
-//       method: "POST",
-//       headers: {
-//         "Content-Type": "application/json",
-//       },
-//       body: JSON.stringify({ text: content }),
-//     });
-//     if (response) {
-//       const audioResponse = await response.json();
-//       audioPlayer.src = audioResponse;
-//       audioPlayer.play();
-//       inputField.value = "";
-//     }
-//   } catch (error) {
-//     console.error("error fetching audio content:", error?.message);
-//   }
-// }
+//streaming websocket setup
+let websocket = null;
+let isRecording = false;
+let audioChunks = [];
 
-// generateButton.addEventListener("click", fetchAudioContent);
+function setupWebSocket() {
+  // Set up WebSocket connection
+  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+  const wsUrl = `${protocol}://${window.location.host}/ws`;
+  websocket = new WebSocket(wsUrl);
 
-// function appendMessage(text, sender="user", audioUrl = null){
-//   const msgDiv = document.createElement("div");
-//   msgDiv.className = `chat-message ${sender}`;
-//   const bubble = document.createElement("div");
-//   bubble.className="chat-bubble";
-//   bubble.textContent = text;
-//   msgDiv.appendChild(bubble);
+  console.log("WebSocket URL:", wsUrl);
 
-//   // If there's audio, add an audio player
-//   if (audioUrl) {
-//     const audioElem = document.createElement("audio");
-//     audioElem.controls = true;
-//     audioElem.src = audioUrl;
-//     audioElem.style.marginTop = "6px";
-//     msgDiv.appendChild(audioElem);
-//   }
+  websocket.onopen = () => {
+    console.log("WebSocket connection established");
+  };
 
-//   chatWindow.appendChild(msgDiv);
-//   chatWindow.scrollTop = chatWindow.scrollHeight;
+  websocket.onmessage = (event) => {
+    //handle server acknowledgement here
+    console.log("server message:", event.data);
+  };
 
-// }
+  websocket.onclose = () => {
+    console.log("WebSocket connection closed");
+  };
 
-//Day-4
+  websocket.onerror = (error) => {
+    console.error("WebSocket error:", error);
+    errorContainer.style.display = "flex";
+    errorText.innerText = `WebSocket Error: Connection failed`;
+  };
+
+  return websocket;
+}
+
 if (navigator.mediaDevices) {
   console.log("mediaDevices", navigator.mediaDevices);
 }
@@ -82,51 +69,52 @@ navigator.mediaDevices
 
     recordButton.onclick = () => {
       console.log("clicked");
-      mediaRecorder.start();
-      console.log("started recording", mediaRecorder.state);
-      //recordButton.style.background = "red";
-      recordButton.disabled = true;
-      recordButton.style.cursor = "not-allowed";
+      //setup WebSocket before starting to record
+      websocket = setupWebSocket();
+      //clear any previous chunk
+      audioChunks = [];
+      isRecording = true;
 
-      //show the listening animation
-      botListening.classList.add("active");
+      websocket.onopen = () => {
+        mediaRecorder.start(250); //send chunks to server every 250ms
+        console.log("started recording", mediaRecorder.state);
+        recordButton.disabled = true;
+        recordButton.style.cursor = "not-allowed";
+        //show the listening animation
+        botListening.classList.add("active");
+      };
     };
 
     stopRecordButton.onclick = () => {
-      mediaRecorder.stop();
-      console.log("stopped recording", mediaRecorder.state);
-      recordButton.disabled = false;
-      recordButton.style.cursor = "pointer";
-      // recordButton.style.color = "";
-      // recordButton.style.background = "";
-      //stopRecordButton.style.color = "black";
-      // recordButton.textContent = "Record Audio";
-      botListening.classList.remove("active");
-    };
+      if (isRecording) {
+        isRecording = false;
+        mediaRecorder.stop();
+        console.log("stopped recording", mediaRecorder.state);
+        recordButton.disabled = false;
+        recordButton.style.cursor = "pointer";
+        botListening.classList.remove("active");
 
-    mediaRecorder.onstop = async (e) => {
-      console.log("data available after MediaRecorder.stop() called.");
-
-      const blob = new Blob(chunks, { type: "audio/ogg; codecs = opus" });
-      chunks = [];
-      const audioURL = URL.createObjectURL(blob);
-      let transcript = "";
-      // recordingPlayer.src = audioURL;
-      // Upload Audio File to server temp_upload folder
-      //uploadAudioFile(blob);
-      try {
-        //transcript = await transcribeFile(blob);
-        // murfAudioPlayback(blob);
-        fetchResponsefromllm(blob);
-      } catch (error) {
-        console.error("error transcribing audio file:", error?.message);
+        // Close WebSocket connection
+        if (websocket && websocket.readyState === WebSocket.OPEN) {
+          websocket.close();
+        }
       }
-
-      console.log("recorder stopped");
     };
 
     mediaRecorder.ondataavailable = (e) => {
-      chunks.push(e.data);
+      if (
+        e.data.size > 0 &&
+        isRecording &&
+        websocket &&
+        websocket.readyState === WebSocket.OPEN
+      ) {
+        //send audio chunk to the server
+        websocket.send(e.data);
+      }
+    };
+
+    mediaRecorder.onstop = () => {
+      console.log("mediaRecorder stopped");
     };
   })
   .catch((err) => {
