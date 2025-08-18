@@ -10,9 +10,11 @@ import time
 import assemblyai as aai
 from google import genai
 from services.murf_service import murf_tts
-from services.assembly_service import transcription
+from services.assembly_service import AssemblyAIStreamingClient
 import uuid
 from services.socket import save_audio_chunk
+import asyncio
+import threading
 
 load_dotenv()
 MURF_API_KEY = os.getenv('MURF_API_KEY')
@@ -265,32 +267,63 @@ async def agent_chat(file: UploadFile, session_id: str):
         )
                
 #websocket endpoint
+# @app.websocket("/ws")
+# async def websocket_endpoint(websocket: WebSocket):
+#     await websocket.accept()
+#     print("✅ websocket connection open")
+#     session_id = str(uuid.uuid4())
+#     file_path = None
+#     aaiclient = client
+#     if not connected:
+#         await websocket.close(code=1011, reason="Failed to connect to transcription service")
+#         return
+#     try:
+#         while True:
+#          #receive the message
+#          data = await websocket.receive_bytes()
+#          print("receiving data")
+#          if not data:
+#              continue
+         
+#          #save the audio chunk
+#          file_path = await save_audio_chunk(data, session_id)
+         
+         
+         
+         
+         
+#          #send acknowledgement back to the client
+#          await websocket.send_json({"status": "received audio chunk", "session_id": session_id})
+         
+         
+         
+#     except WebSocketDisconnect:
+#         print("❌websocket connection closed")
+        
+        
+#     except Exception as e:
+#         print("Error in websocket endpoint:", str(e))
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    print("✅ websocket connection open")
-    session_id = str(uuid.uuid4())
-    file_path = None
+    print("WebSocket connection open")
+
+    # Initialize AssemblyAI client 
+    aaiClient = AssemblyAIStreamingClient(sample_rate=16000)
     try:
         while True:
-         #receive the message
-         data = await websocket.receive_bytes()
-         print("receiving data")
-         if not data:
-             continue
-         
-         #save the audio chunk
-         file_path = await save_audio_chunk(data, session_id)
-         #send acknowledgement back to the client
-         await websocket.send_json({"status": "received audio chunk", "session_id": session_id})
-         
+            data = await websocket.receive_bytes()
+            if not data:
+                continue
+
+            aaiClient.stream(data)
+            await websocket.send_json({"status": "transcribing audio"})
     except WebSocketDisconnect:
-        print("❌websocket connection closed")
-        
-        
-    except Exception as e:
-        print("Error in websocket endpoint:", str(e))
-             
+        print("WebSocket disconnected")
+    finally:
+        aaiClient.close()
+        print("AssemblyAI client disconnected")
     
         
     
