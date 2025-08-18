@@ -23,7 +23,9 @@ let content = "";
 //streaming websocket setup
 let websocket = null;
 let isRecording = false;
-let audioChunks = [];
+let audioContext;
+let scriptProcessor;
+let source;
 
 function setupWebSocket() {
   // Set up WebSocket connection
@@ -55,73 +57,60 @@ function setupWebSocket() {
   return websocket;
 }
 
+/* 🔹 Convert Float32 → PCM16 */
+function floatTo16BitPCM(float32Array) {
+    const buffer = new ArrayBuffer(float32Array.length * 2);
+    const view = new DataView(buffer);
+    let offset = 0;
+    for (let i = 0; i < float32Array.length; i++, offset += 2) {
+        let s = Math.max(-1, Math.min(1, float32Array[i]));
+        view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+    }
+    return buffer;
+}
+
 if (navigator.mediaDevices) {
   console.log("mediaDevices", navigator.mediaDevices);
 }
 
-const constraints = { audio: true };
-let chunks = [];
 
-navigator.mediaDevices
-  .getUserMedia(constraints)
-  .then((stream) => {
-    const mediaRecorder = new MediaRecorder(stream);
 
-    recordButton.onclick = () => {
-      console.log("clicked");
-      //setup WebSocket before starting to record
-      websocket = setupWebSocket();
-      //clear any previous chunk
-      audioChunks = [];
-      isRecording = true;
+recordButton.onclick = async () => {
+  websocket = setupWebSocket();
+  isRecording = true;
+  recordButton.disabled = true;
+  botListening.classList.add("active");
 
-      websocket.onopen = () => {
-        mediaRecorder.start(250); //send chunks to server every 250ms
-        console.log("started recording", mediaRecorder.state);
-        recordButton.disabled = true;
-        recordButton.style.cursor = "not-allowed";
-        //show the listening animation
-        botListening.classList.add("active");
-      };
-    };
+  // Set up Web Audio API for PCM16 streaming
+  audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  source = audioContext.createMediaStreamSource(stream);
+  scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
 
-    stopRecordButton.onclick = () => {
-      if (isRecording) {
-        isRecording = false;
-        mediaRecorder.stop();
-        console.log("stopped recording", mediaRecorder.state);
-        recordButton.disabled = false;
-        recordButton.style.cursor = "pointer";
-        botListening.classList.remove("active");
+  scriptProcessor.onaudioprocess = (audioProcessingEvent) => {
+    if (!isRecording) return;
+    const inputData = audioProcessingEvent.inputBuffer.getChannelData(0);
+    const pcm16Buffer = floatTo16BitPCM(inputData);
+    if (websocket && websocket.readyState === WebSocket.OPEN) {
+      websocket.send(pcm16Buffer);
+    }
+  };
 
-        // Close WebSocket connection
-        if (websocket && websocket.readyState === WebSocket.OPEN) {
-          websocket.close();
-        }
-      }
-    };
+  source.connect(scriptProcessor);
+  scriptProcessor.connect(audioContext.destination);
+};
 
-    mediaRecorder.ondataavailable = (e) => {
-      if (
-        e.data.size > 0 &&
-        isRecording &&
-        websocket &&
-        websocket.readyState === WebSocket.OPEN
-      ) {
-        //send audio chunk to the server
-        websocket.send(e.data);
-      }
-    };
-
-    mediaRecorder.onstop = () => {
-      console.log("mediaRecorder stopped");
-    };
-  })
-  .catch((err) => {
-    console.error(`The following error occurred: ${err}`);
-    errorContainer.style.display = "flex";
-    errorText.innerText = `Error: ${err}`;
-  });
+stopRecordButton.onclick = () => {
+  isRecording = false;
+  recordButton.disabled = false;
+  botListening.classList.remove("active");
+  if (scriptProcessor) scriptProcessor.disconnect();
+  if (source) source.disconnect();
+  if (audioContext) audioContext.close();
+  if (websocket && websocket.readyState === WebSocket.OPEN) {
+    websocket.close();
+  }
+};
 
 const uploadingContainer = document.getElementById("uploadingContainer");
 const uploadingText = document.getElementById("uploadingText");
