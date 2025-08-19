@@ -308,9 +308,11 @@ async def agent_chat(file: UploadFile, session_id: str):
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     print("WebSocket connection open")
-
-    # Initialize AssemblyAI client 
-    aaiClient = AssemblyAIStreamingClient(sample_rate=16000)
+    
+    loop = asyncio.get_running_loop()
+   
+     # Initialize AssemblyAI client 
+    aaiClient = AssemblyAIStreamingClient( websocket, loop, sample_rate=16000)
     try:
         while True:
             data = await websocket.receive_bytes()
@@ -318,7 +320,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 continue
 
             aaiClient.stream(data)
-            await websocket.send_json({"status": "transcribing audio"})
+            
     except WebSocketDisconnect:
         print("WebSocket disconnected")
     finally:

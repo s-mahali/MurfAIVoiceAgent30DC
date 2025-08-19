@@ -17,6 +17,8 @@ const botSpeaking = document.getElementById("botSpeaking");
 const errorContainer = document.getElementById("errorContainer");
 const errorText = document.getElementById("errorText");
 //const chatWindow = document.getElementById("chatWindow");
+const streamingUI = document.getElementById("streamingStatus");
+const transcriptSection = document.getElementById("transcriptSection");
 
 let content = "";
 
@@ -41,7 +43,14 @@ function setupWebSocket() {
 
   websocket.onmessage = (event) => {
     //handle server acknowledgement here
-    console.log("server message:", event.data);
+    const data = JSON.parse(event.data);
+    console.log("transcript:", event.data);
+    if(data.status === "final_transcript") {
+            //create a p element to display the transcript
+            const p = document.createElement("p");
+            p.innerText = data.transcript;
+            transcriptSection.appendChild(p);
+        }
   };
 
   websocket.onclose = () => {
@@ -93,7 +102,7 @@ recordButton.onclick = async () => {
     const pcm16Buffer = floatTo16BitPCM(inputData);
     if (websocket && websocket.readyState === WebSocket.OPEN) {
       websocket.send(pcm16Buffer);
-    }
+      }
   };
 
   source.connect(scriptProcessor);
