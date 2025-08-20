@@ -312,7 +312,7 @@ async def websocket_endpoint(websocket: WebSocket):
     loop = asyncio.get_running_loop()
    
      # Initialize AssemblyAI client 
-    aaiClient = AssemblyAIStreamingClient( websocket, loop, sample_rate=16000)
+    aaiClient = AssemblyAIStreamingClient( websocket, loop, sample_rate=16000, silence_threshold=1.5)
     try:
         while True:
             data = await websocket.receive_bytes()
@@ -321,6 +321,8 @@ async def websocket_endpoint(websocket: WebSocket):
 
             aaiClient.stream(data)
             
+            
+            
     except WebSocketDisconnect:
         print("WebSocket disconnected")
     finally:
@@ -328,7 +330,7 @@ async def websocket_endpoint(websocket: WebSocket):
         print("AssemblyAI client disconnected")
     
         
-    
+     
 
 
         
