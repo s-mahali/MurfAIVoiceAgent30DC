@@ -9,6 +9,7 @@ from google import genai
 import time
 from datetime import datetime, timedelta
 from collections import deque
+from services.murf_service import MurfService
 from assemblyai.streaming.v3 import (
     BeginEvent,
     StreamingClient,
@@ -33,6 +34,13 @@ class AssemblyAIStreamingClient:
         self.transcript_buffer = []
         self.llm_task = None
         self.is_processing = False
+        
+        
+        #Initialize MurfService
+        self.murf_service = MurfService(
+            websocket = websocket,
+            api_key=os.getenv("MURF_API_KEY")
+        )
         
           # Initialize AssemblyAI client
         self.client = StreamingClient(
@@ -120,9 +128,11 @@ class AssemblyAIStreamingClient:
                 contents=text
             )
             
-            # Stream LLM response back to client
+            # Collect complete LLM response
+            llm_response = ""
             for chunk in response:
                 if chunk.text:
+                    llm_response += chunk.text
                     await self.websocket.send_json({
                         "status": "llm_response",
                         "text": chunk.text,
@@ -137,6 +147,11 @@ class AssemblyAIStreamingClient:
                 "text": "",
                 "is_complete": True
             })
+            
+            #Convert LLm response to speech using Murf.ai
+            if llm_response.strip():
+                print("Converting LLM response to speech...")
+                await self.murf_service.synthesize_speech(llm_response)
             
         except Exception as e:
             logging.error(f"LLM Error: {e}")

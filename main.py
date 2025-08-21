@@ -327,7 +327,8 @@ async def websocket_endpoint(websocket: WebSocket):
         print("WebSocket disconnected")
     finally:
         aaiClient.close()
-        print("AssemblyAI client disconnected")
+        await aaiClient.murf_service.close()
+        print("All services disconnected")
     
         
      
