@@ -44,13 +44,17 @@ function setupWebSocket() {
   websocket.onmessage = (event) => {
     //handle server acknowledgement here
     const data = JSON.parse(event.data);
-    console.log("transcript:", event.data);
-    if(data.status === "final_transcript") {
-            //create a p element to display the transcript
-            const p = document.createElement("p");
-            p.innerText = data.transcript;
-            transcriptSection.appendChild(p);
-        }
+    //console.log("transcript:", event.data);
+    // if(data.status === "final_transcript") {
+    //         //create a p element to display the transcript
+    //         const p = document.createElement("p");
+    //         p.innerText = data.transcript;
+    //         transcriptSection.appendChild(p);
+    //     }
+
+    if(data.status === "audio_chunk") {
+       console.log("💀 audio recieved (base64) ---> ", data?.audio_base64)
+    }    
   };
 
   websocket.onclose = () => {
