@@ -28,6 +28,124 @@ let isRecording = false;
 let audioContext;
 let scriptProcessor;
 let source;
+let streamAudioContext = null;
+let audioChunks = [];
+let base64AudioChunks = [];
+let playheadTime = 0;
+let wavHeaderStripped = false;
+let isPlaying = false;
+
+
+//Function to queue and play audio chunks
+function queueAudioForPlayback(base64Data) {
+  if (!streamAudioContext) {
+    streamAudioContext = new window.AudioContext({ sampleRate: 44100 });
+    playheadTime = streamAudioContext.currentTime;
+    botSpeaking.classList.add("active");
+  }
+
+  try {
+    //store base64 chunks for debugging
+    base64AudioChunks.push(base64Data);
+    //convert base64 to PCM FLoat32
+    const pcmData = base64ToPCMFloat32(base64Data);
+
+    if (pcmData) {
+      console.log("converted base64 to pcm");
+      audioChunks.push(pcmData);
+
+      if (!isPlaying) {
+        playAudioChunks();
+      }
+    }
+  } catch (error) {
+    console.error("Error processing base64 audio:", error);
+  }
+}
+
+//Function to base64ToPCMFLoat32
+function base64ToPCMFloat32(base64) {
+  const binary = atob(base64);
+  const offset = wavHeaderStripped ? 0 : 44;
+  console.log("offset", offset);
+  if (!wavHeaderStripped && binary.length > 44) {
+    console.log("wavheader");
+    wavHeaderStripped = true;
+  }
+  const length = binary.length - offset;
+  if (length <= 0) return null;
+
+  const bytes = new Uint8Array(length);
+  for (let i = 0; i < length; i++) {
+    bytes[i] = binary.charCodeAt(i + offset);
+  }
+
+  const sampleCount = bytes.length / 2;
+  const float32Array = new Float32Array(sampleCount);
+  const dataView = new DataView(bytes.buffer);
+  for (let i = 0; i < sampleCount; i++) {
+    const int16 = dataView.getInt16(i * 2, true);
+    float32Array[i] = Math.max(-1, Math.min(1, int16 / 32768)); // Convert to float32
+    
+  }
+
+  return float32Array;
+}
+
+
+function playAudioChunks() {
+  if (audioChunks.length === 0) {
+    isPlaying = false;
+    wavHeaderStripped = false;
+    botSpeaking.classList.remove("active");
+    return;
+  }
+
+  isPlaying = true;
+  const chunk = audioChunks.shift();
+
+  if (streamAudioContext.state === "suspended") {
+    streamAudioContext.resume();
+  }
+
+  const buffer = streamAudioContext.createBuffer(1, chunk.length, 44100);
+  buffer.copyToChannel(chunk, 0);
+
+  const source = streamAudioContext.createBufferSource();
+  source.buffer = buffer;
+  source.connect(streamAudioContext.destination);
+
+  const now = streamAudioContext.currentTime;
+  // if (playheadTime < now) {
+  //     playheadTime = now + 0.05;
+  // }
+  console.log("playing at");
+  source.start(0);
+  playheadTime += buffer.duration;
+
+  source.onended = () => {
+    if (audioChunks.length > 0) {
+      playAudioChunks();
+    } else {
+      isPlaying = false;
+      wavHeaderStripped = false;
+      botSpeaking.classList.remove("active");
+    }
+  };
+}
+
+// Cleanup function when stopping
+function cleanupStreamAudio() {
+  audioChunks = [];
+  base64AudioChunks = [];
+  isPlaying = false;
+  wavHeaderStripped = false;
+  if (streamAudioContext) {
+    streamAudioContext.close();
+    streamAudioContext = null;
+  }
+  botSpeaking.classList.remove("active");
+}
 
 function setupWebSocket() {
   // Set up WebSocket connection
@@ -52,9 +170,10 @@ function setupWebSocket() {
     //         transcriptSection.appendChild(p);
     //     }
 
-    if(data.status === "audio_chunk") {
-       console.log("💀 audio recieved (base64) ---> ", data?.audio_base64)
-    }    
+    if (data.status === "audio_chunk") {
+      console.log("audio chunk 🔊 ");
+      queueAudioForPlayback(data.audio_base64);
+    }
   };
 
   websocket.onclose = () => {
@@ -72,21 +191,19 @@ function setupWebSocket() {
 
 /* 🔹 Convert Float32 → PCM16 */
 function floatTo16BitPCM(float32Array) {
-    const buffer = new ArrayBuffer(float32Array.length * 2);
-    const view = new DataView(buffer);
-    let offset = 0;
-    for (let i = 0; i < float32Array.length; i++, offset += 2) {
-        let s = Math.max(-1, Math.min(1, float32Array[i]));
-        view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
-    }
-    return buffer;
+  const buffer = new ArrayBuffer(float32Array.length * 2);
+  const view = new DataView(buffer);
+  let offset = 0;
+  for (let i = 0; i < float32Array.length; i++, offset += 2) {
+    let s = Math.max(-1, Math.min(1, float32Array[i]));
+    view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+  }
+  return buffer;
 }
 
 if (navigator.mediaDevices) {
   console.log("mediaDevices", navigator.mediaDevices);
 }
-
-
 
 recordButton.onclick = async () => {
   websocket = setupWebSocket();
@@ -95,7 +212,9 @@ recordButton.onclick = async () => {
   botListening.classList.add("active");
 
   // Set up Web Audio API for PCM16 streaming
-  audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+  audioContext = new (window.AudioContext || window.webkitAudioContext)({
+    sampleRate: 16000,
+  });
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   source = audioContext.createMediaStreamSource(stream);
   scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
@@ -106,7 +225,7 @@ recordButton.onclick = async () => {
     const pcm16Buffer = floatTo16BitPCM(inputData);
     if (websocket && websocket.readyState === WebSocket.OPEN) {
       websocket.send(pcm16Buffer);
-      }
+    }
   };
 
   source.connect(scriptProcessor);
@@ -123,6 +242,7 @@ stopRecordButton.onclick = () => {
   if (websocket && websocket.readyState === WebSocket.OPEN) {
     websocket.close();
   }
+  cleanupStreamAudio();
 };
 
 const uploadingContainer = document.getElementById("uploadingContainer");

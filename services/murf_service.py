@@ -63,7 +63,7 @@ class MurfService:
                     "style": "Conversational",
                     "rate": 0,
                     "pitch": 0,
-                    "variation": 1
+                    "variation": 5
                 }
             }
             await self.connection.send(json.dumps(voice_config))
