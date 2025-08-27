@@ -32,7 +32,7 @@ class AssemblyAIStreamingClient:
         self.loop = loop
         self.silence_threshold = silence_threshold #second of silence to trigger LLM
         self.last_audio_time = None
-        self.transcript_buffer = []
+        self.transcript = ""
         self.llm_task = None
         self.is_processing = False
         
@@ -71,31 +71,20 @@ class AssemblyAIStreamingClient:
     
     def on_turn(self, client, event: TurnEvent):
         current_time = time.time()
-        
         #update last audio time 
         self.last_audio_time = current_time
-        
-        
-        # Print transcripts as they arrive
-        print(f"{event.transcript} (end_of_turn={event.end_of_turn})")
-       
-       #Buffer the transcript
-        if event.transcript.strip():
-           self.transcript_buffer.append({
-               'text': event.transcript,
-                'timestamp': current_time,
-                'end_of_turn': event.end_of_turn
-           }) 
+        print(f"transcript: {event.transcript}, end_of_turn: {event.end_of_turn}")
+        self.transcript = event.transcript 
            
        
-              
-        
-        if event.end_of_turn and self.transcript_buffer:
+        if event.end_of_turn and event.transcript:
+            print("calling process_buffered_transcript")
             asyncio.run_coroutine_threadsafe(
             self.process_buffered_transcript(),
             self.loop
         )
         else:
+            print("calling check_silence_and_process")
             asyncio.run_coroutine_threadsafe(
             self.check_silence_and_process(),
             self.loop
@@ -110,55 +99,47 @@ class AssemblyAIStreamingClient:
         print("Checking silence...")
         """Check if enough silence has passed and process transcript"""
         if (self.last_audio_time and time.time() - self.last_audio_time > self.silence_threshold
-            and self.transcript_buffer and  not self.is_processing):
-            
-           await self.process_buffered_transcript()
-    
+            and self.transcript and  not self.is_processing):
+            print("Enough silence has passed, processing transcript...")
+            await self.process_buffered_transcript()
+        else:
+            print("Not enough silence, skipping processing...")
     async def process_buffered_transcript(self):
-        print("Processing buffered transcript...")
-        print("is_processing", self.is_processing)
-        """Process the buffered transcript through LLM"""
-        if not self.transcript_buffer or self.is_processing:
-            print("🪲bug")
+        print("1Processing buffered transcript...")
+        if not self.transcript or self.is_processing:
+            print("No transcript or is_processing, skipping processing...")
             return
         
         self.is_processing = True
         
-        # Get the complete transcript from buffer
-        full_transcript = " ".join([item['text'] for item in self.transcript_buffer])
         await self.websocket.send_json({
                "status": "transcript",
-               "text": full_transcript,
+               "text": self.transcript,
                })
+        print("Sent transcript to client", self.transcript)
         
-        # Clear buffer after processing
-        self.transcript_buffer.clear()
+        final_transcript = self.transcript
+        self.transcript = ""
         
         # Call LLM asynchronously
         self.llm_task = asyncio.run_coroutine_threadsafe(
-            self.call_llm_async(full_transcript),
+            self.call_llm_async(final_transcript),
             self.loop,
-            # self.is_processing = False
+            
         )
+        print("LLM task started")
     
     async def call_llm_async(self, text: str):
         print("Calling LLM...")
         try:
-            llm_response = ""
-            async for chunk_text in self.gemini_service.gemini_response(text):
-                llm_response += chunk_text
-                await self.websocket.send_json({
-                    "status": "llm_response",
-                    "text": chunk_text,
-                    "is_complete": False
-                })
-                print(chunk_text, end="", flush=True)
-
+            
+            llm_response = await self.gemini_service.gemini_response(text)
+                 
             
             # Send completion signal
             await self.websocket.send_json({
                 "status": "llm_response",
-                "text": "",
+                "text": llm_response,
                 "is_complete": True
             })
             
@@ -186,7 +167,7 @@ class AssemblyAIStreamingClient:
     def on_terminated(self, client, event: TerminationEvent):
        print(f"Session terminated: {event.audio_duration_seconds} seconds processed")
        # Process any remaining buffered transcript
-       if self.transcript_buffer:
+       if self.transcript:
             self.process_buffered_transcript()     
     
     def on_error(self,client, error: StreamingError):
@@ -198,7 +179,7 @@ class AssemblyAIStreamingClient:
 
     def close(self):
         # Process any remaining transcript before closing
-        if self.transcript_buffer:
+        if self.transcript:
             self.process_buffered_transcript()
         self.client.disconnect(terminate=True)   
     

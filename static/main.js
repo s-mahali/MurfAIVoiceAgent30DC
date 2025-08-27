@@ -128,9 +128,9 @@ function setupWebSocket() {
     const data = JSON.parse(event.data);
 
     if (data.status === "transcript") {
-      console.log("transcript received:", data.transcript);
+      console.log("transcript received:", data.text);
       // Add user message to chat
-      addMessageToChat(data.transcript, "user");
+      addMessageToChat(data.text, "user");
       // Update status to processing
       updateThoughtsDisplay("processing");
     } else if (data.status === "bot_speaking") {
@@ -151,6 +151,8 @@ function setupWebSocket() {
     } else if (data.status === "audio_complete") {
       // Allow user to continue speaking without restarting session
       console.log("audio complete ✅");
+      statusText.textContent = "Listening";
+        updateThoughtsDisplay("listening");
     } else if (data.status === "llm_response") {
       // Add bot message to chat
       addMessageToChat(data.text, "assistant");
