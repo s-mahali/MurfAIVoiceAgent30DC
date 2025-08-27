@@ -10,6 +10,7 @@ import time
 from datetime import datetime, timedelta
 from collections import deque
 from services.murf_service import MurfService
+from services.gemini_service import GeminiService
 from assemblyai.streaming.v3 import (
     BeginEvent,
     StreamingClient,
@@ -26,12 +27,12 @@ load_dotenv()
 aai.settings.api_key =  os.getenv('ASSEMBLYAI_API_KEY')
 
 class AssemblyAIStreamingClient:
-    def __init__(self, websocket, loop, sample_rate=16000, silence_threshold=1.5):
+    def __init__(self, websocket, loop, sample_rate=16000, silence_threshold=0.6):
         self.websocket = websocket
         self.loop = loop
         self.silence_threshold = silence_threshold #second of silence to trigger LLM
         self.last_audio_time = None
-        self.transcript_buffer = []
+        self.transcript = ""
         self.llm_task = None
         self.is_processing = False
         
@@ -41,6 +42,9 @@ class AssemblyAIStreamingClient:
             websocket = websocket,
             api_key=os.getenv("MURF_API_KEY")
         )
+        
+        #Initialize GeminiService
+        self.gemini_service = GeminiService()
         
           # Initialize AssemblyAI client
         self.client = StreamingClient(
@@ -67,91 +71,88 @@ class AssemblyAIStreamingClient:
     
     def on_turn(self, client, event: TurnEvent):
         current_time = time.time()
-        
         #update last audio time 
         self.last_audio_time = current_time
-        
-        
-        # Print transcripts as they arrive
-        print(f"{event.transcript} (end_of_turn={event.end_of_turn})")
+        print(f"transcript: {event.transcript}, end_of_turn: {event.end_of_turn}")
+        self.transcript = event.transcript 
+           
        
-       #Buffer the transcript
-        if event.transcript.strip():
-           self.transcript_buffer.append({
-               'text': event.transcript,
-                'timestamp': current_time,
-                'end_of_turn': event.end_of_turn
-           })
-              
-        # Check for silence and process if needed
-        self.check_silence_and_process()  
+        if event.end_of_turn and event.transcript:
+            print("calling process_buffered_transcript")
+            asyncio.run_coroutine_threadsafe(
+            self.process_buffered_transcript(),
+            self.loop
+        )
+        else:
+            print("calling check_silence_and_process")
+            asyncio.run_coroutine_threadsafe(
+            self.check_silence_and_process(),
+            self.loop
+        )
       
       
         if event.end_of_turn and not event.turn_is_formatted:
           client.set_params(StreamingSessionParameters(format_turns=True))
     
     
-    def check_silence_and_process(self):
+    async def check_silence_and_process(self):
+        print("Checking silence...")
         """Check if enough silence has passed and process transcript"""
-        if (self.last_audio_time and 
-            time.time() - self.last_audio_time > self.silence_threshold and
-            self.transcript_buffer and 
-            not self.is_processing):
-            
-            self.process_buffered_transcript()
-    
-    def process_buffered_transcript(self):
-        """Process the buffered transcript through LLM"""
-        if not self.transcript_buffer or self.is_processing:
+        if (self.last_audio_time and time.time() - self.last_audio_time > self.silence_threshold
+            and self.transcript and  not self.is_processing):
+            print("Enough silence has passed, processing transcript...")
+            await self.process_buffered_transcript()
+        else:
+            print("Not enough silence, skipping processing...")
+    async def process_buffered_transcript(self):
+        print("1Processing buffered transcript...")
+        if not self.transcript or self.is_processing:
+            print("No transcript or is_processing, skipping processing...")
             return
         
         self.is_processing = True
         
-        # Get the complete transcript from buffer
-        full_transcript = " ".join([item['text'] for item in self.transcript_buffer])
+        await self.websocket.send_json({
+               "status": "transcript",
+               "text": self.transcript,
+               })
+        print("Sent transcript to client", self.transcript)
         
-        # Clear buffer after processing
-        self.transcript_buffer.clear()
+        final_transcript = self.transcript
+        self.transcript = ""
         
         # Call LLM asynchronously
         self.llm_task = asyncio.run_coroutine_threadsafe(
-            self.call_llm_async(full_transcript),
-            self.loop
+            self.call_llm_async(final_transcript),
+            self.loop,
+            
         )
+        print("LLM task started")
     
     async def call_llm_async(self, text: str):
-        """Asynchronous LLM call"""
+        print("Calling LLM...")
         try:
-            client = genai.Client()
-            response = client.models.generate_content_stream(
-                model="gemini-2.0-flash", 
-                contents=text
-            )
             
-            # Collect complete LLM response
-            llm_response = ""
-            for chunk in response:
-                if chunk.text:
-                    llm_response += chunk.text
-                    await self.websocket.send_json({
-                        "status": "llm_response",
-                        "text": chunk.text,
-                        "is_complete": False
-                    })
-                    print(chunk.text)
-                    print("_" * 50)
+            llm_response = await self.gemini_service.gemini_response(text)
+                 
             
             # Send completion signal
             await self.websocket.send_json({
                 "status": "llm_response",
-                "text": "",
+                "text": llm_response,
                 "is_complete": True
             })
             
-            #Convert LLm response to speech using Murf.ai
+            # Notify client that bot is about to speak (pause mic streaming)
+            await self.websocket.send_json({
+                "status": "bot_speaking",
+                "active": True
+            })
+            #Convert LLM response to speech using Murf.ai
             if llm_response.strip():
                 print("Converting LLM response to speech...")
                 await self.murf_service.synthesize_speech(llm_response)
+                
             
         except Exception as e:
             logging.error(f"LLM Error: {e}")
@@ -161,11 +162,12 @@ class AssemblyAIStreamingClient:
             })
         finally:
             self.is_processing = False
+            print("is_processing final",self.is_processing)
      
     def on_terminated(self, client, event: TerminationEvent):
        print(f"Session terminated: {event.audio_duration_seconds} seconds processed")
        # Process any remaining buffered transcript
-       if self.transcript_buffer:
+       if self.transcript:
             self.process_buffered_transcript()     
     
     def on_error(self,client, error: StreamingError):
@@ -173,12 +175,11 @@ class AssemblyAIStreamingClient:
        
     def stream(self, audio_chunk: bytes):
         self.client.stream(audio_chunk)
-        # Check for silence after each audio chunk
-        self.check_silence_and_process()
+        
 
     def close(self):
         # Process any remaining transcript before closing
-        if self.transcript_buffer:
+        if self.transcript:
             self.process_buffered_transcript()
         self.client.disconnect(terminate=True)   
     

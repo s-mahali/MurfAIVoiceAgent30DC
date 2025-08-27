@@ -81,52 +81,43 @@ class MurfService:
             #send text to be synthesized
             text_message = {
                 'text': text,
+                'end': True,
+                 
                 
             }
             await self.connection.send(json.dumps(text_message))
-            
-            audio_chunks = []
-            first_chunk = True
-            
-            while True:
-                response = await self.connection.recv()
-                data = json.loads(response)
-                
-                if "audio" in data:
-                    audio_base64 = data["audio"]
-                    audio_chunks.append(audio_base64)    
-                    
-                    # For console logging
-                    print(f"Audio chunk received (base64): {audio_base64[:100]}...")  # First 100 chars
-                    
-                    # send to frontend 
-                    await self.websocket.send_json({
-                        "status": "audio_chunk",
-                        "audio_base64": audio_base64,
-                        "is_complete": False
-                    })
-                
-                if data.get("final"):
-                    break    
-                
-            #combine all audio chunks 
-            complete_audio = "".join(audio_chunks)    
-            # Send completion signal to frontend
-            await self.websocket.send_json({
-                "status": "audio_complete",
-                "message": "Audio synthesis completed",
-                "audio": complete_audio
-            })
-            
-            return complete_audio
+            asyncio.create_task(self._receive_audio_stream())
         
         except Exception as e:
-            logging.error(f"Error in speech synthesis: {e}")
-            await self.websocket.send_json({
-                "status": "error",
-                "message": f"TTS Error: {str(e)}"
-            })
+            logging.error(f"Failed to synthesize speech: {e}")
             raise
+        
+    async def _receive_audio_stream(self):
+        """Handle audio streaming in background"""
+        try:
+           while True:
+              response = await self.connection.recv()
+              data = json.loads(response)
+            
+              if "audio" in data:
+                await self.websocket.send_json({
+                    "status": "audio_chunk",
+                    "audio_base64": data["audio"],
+                    "is_complete": False
+                })
+            
+              if data.get("final"):
+                await self.websocket.send_json({
+                    "status": "audio_complete"
+                })
+                await self.websocket.send_json({
+                    "status": "bot_speaking",
+                    "active": False
+                })
+                break
+                
+        except Exception as e:
+          logging.error(f"Audio streaming error: {e}")        
         
     async def close(self):
         """Close the WebSocket connection"""

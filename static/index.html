@@ -3,55 +3,84 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Murf30Days</title>
+    <title>Meow • Voice Assistant</title>
     <link rel="stylesheet" href="/static/style.css" />
   </head>
-
   <body>
-    <div class="main-container">
-      <div class="imageContainer">
-        <img src="/static/robot.png" alt="robot" />
+    <!-- Header with brand and mode toggle -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo">
+          <img src="/static/robot.png" alt="Saga" width="32" height="32" />
+          <span>Meow</span>
+        </div>
       </div>
-      <div id="recorderContainer">
-        <h1>AI Conversational Assistant 🤖</h1>
-        <div id="botStatus">
-          <div id="botListening" class="bot-state">
-            <div class="listening-animation">
-              <span></span><span></span><span></span><span></span>
-            </div>
-            <p>Echo Bot is listening...</p>
-          </div>
-          <div id="botSpeaking" class="bot-state">
-            <div class="speaking-animation">
-              <span></span><span></span><span></span><span></span>
-            </div>
-            <p>Echo Bot is speaking...</p>
-          </div>
-        </div>
-        <div id="llmLoading" class="loading-indicator">
-          <span></span><span></span><span></span>
-        </div>
-        <div id="errorContainer">
-          <p id="errorText"></p>
-        </div>
-
-        <div class="record-btn-container">
-          <button id="recordButton">Start Recording</button>
-          <button id="stopButton">Stop Recording</button>
-        </div>
-        <div id="streamingStatus" class="streaming-status">
-          <div class="streaming-animation">
-            <span></span><span></span><span></span><span></span>
-          </div>
-          <p>Streaming audio...</p>
-        </div>
-        <audio id="recordingPlayer" controls></audio>
+      <div class="mode-toggle">
+        <button class="active">Assistant</button>
       </div>
+    </header>
 
-      <section class="transcriptSection" id="transcriptSection">
-        </section>
-    </div>
+    <main class="chat-container">
+      <!-- Avatar and visualization -->
+      <section class="viz-section">
+        <div id="pulseRing" class="pulse-ring">
+          <div class="ring-gradient"></div>
+          <div class="ring-inner"></div>
+        </div>
+        <div class="status-text" id="statusText">Meow</div>
+      </section>
 
-    <script src="static/main.js"></script>
+      <!-- Chat interface -->
+      <section class="chat-section">
+        <div id="chatWindow" class="chat-window">
+          <!-- Messages will be added here -->
+        </div>
+
+        <div class="chat-controls">
+          <!-- Loading indicator -->
+          <div id="llmLoading" class="loading-indicator">
+            <span></span><span></span><span></span>
+          </div>
+
+          <!-- Error container -->
+          <div id="errorContainer">
+            <p id="errorText"></p>
+          </div>
+
+          <!-- Input area -->
+          <div class="input-container">
+            <div id="thoughtsDisplay" class="thoughts-display">
+              your thoughts...
+            </div>
+            <button id="recordButton" class="record-btn">🎤</button>
+            <button id="stopButton" class="stop-btn">✕</button>
+          </div>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="action-buttons">
+          <button id="resumeButton" class="action-btn">Resume</button>
+          <button id="restartButton" class="action-btn highlight">
+            Restart
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <!-- Hidden elements for backwards compatibility -->
+    <div id="recorderContainer" style="display: none"></div>
+    <div
+      id="streamingStatus"
+      class="streaming-status"
+      style="display: none"
+    ></div>
+    <audio id="recordingPlayer" style="display: none"></audio>
+    <section
+      class="transcriptSection"
+      id="transcriptSection"
+      style="display: none"
+    ></section>
+
+    <script src="/static/main.js"></script>
   </body>
 </html>
