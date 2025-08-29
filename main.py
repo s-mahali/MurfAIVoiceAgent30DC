@@ -34,6 +34,10 @@ class Payload(BaseModel):
 async def root():
     return FileResponse("static/index.html")
 
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
+
 @app.post("/audio", status_code=200)
 async def generateAudio(payload: Payload):
     client = Murf(
@@ -347,7 +351,10 @@ async def websocket_endpoint(websocket: WebSocket):
         await aaiClient.murf_service.close()
         print("All services disconnected")
     
-        
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)        
      
 
 
