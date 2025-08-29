@@ -3,9 +3,10 @@ import os
 from dotenv import load_dotenv
 import asyncio
 import logging
+from config.config import api_keys
 load_dotenv()
 
-tavily = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
+tavily = TavilyClient(api_key=api_keys.tavily)
 
 async def web_search(query: str) -> dict:
    

@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from collections import deque
 from services.murf_service import MurfService
 from services.gemini_service import GeminiService
+from config.config import api_keys
 from assemblyai.streaming.v3 import (
     BeginEvent,
     StreamingClient,
@@ -24,7 +25,7 @@ from assemblyai.streaming.v3 import (
 )
 
 load_dotenv()
-aai.settings.api_key =  os.getenv('ASSEMBLYAI_API_KEY')
+aai.settings.api_key =  api_keys.assemblyai
 
 class AssemblyAIStreamingClient:
     def __init__(self, websocket, loop, sample_rate=16000, silence_threshold=0.6):
@@ -40,7 +41,7 @@ class AssemblyAIStreamingClient:
         #Initialize MurfService
         self.murf_service = MurfService(
             websocket = websocket,
-            api_key=os.getenv("MURF_API_KEY")
+            api_key = api_keys.murf,
         )
         
         #Initialize GeminiService

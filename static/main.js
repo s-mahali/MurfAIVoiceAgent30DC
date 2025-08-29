@@ -12,8 +12,95 @@ const statusText = document.getElementById("statusText");
 const thoughtsDisplay = document.getElementById("thoughtsDisplay");
 const resumeButton = document.getElementById("resumeButton");
 const restartButton = document.getElementById("restartButton");
+// Configuration modal elements
+const configButton = document.getElementById("configButton");
+const configModal = document.getElementById("configModal");
+const closeModal = document.querySelector(".close-modal");
+const saveConfigButton = document.getElementById("saveConfig");
+const murfApiKeyInput = document.getElementById("murfApiKey");
+const assemblyaiApiKeyInput = document.getElementById("assemblyaiApiKey");
+const geminiApiKeyInput = document.getElementById("geminiApiKey");
+const tavilyApiKeyInput = document.getElementById("tavilyApiKey");
 
 let content = "";
+
+// Configuration storage
+const API_KEYS_STORAGE_KEY = "meow_api_keys";
+let apiKeys = {
+  murf: "",
+  assemblyai: "",
+  gemini: "",
+  tavily: "",
+};
+
+
+
+function loadApiKeys() {
+  const savedKeys = localStorage.getItem(API_KEYS_STORAGE_KEY);
+  if (savedKeys) {
+    apiKeys = JSON.parse(savedKeys);
+
+    // Populate the form inputs
+    murfApiKeyInput.value = apiKeys.murf || "";
+    assemblyaiApiKeyInput.value = apiKeys.assemblyai || "";
+    geminiApiKeyInput.value = apiKeys.gemini || "";
+    tavilyApiKeyInput.value = apiKeys.tavily || "";
+  }
+}
+
+function saveApiKeys() {
+  apiKeys = {
+    murf: murfApiKeyInput.value.trim(),
+    assemblyai: assemblyaiApiKeyInput.value.trim(),
+    gemini: geminiApiKeyInput.value.trim(),
+    tavily: tavilyApiKeyInput.value.trim(),
+  };
+
+  localStorage.setItem(API_KEYS_STORAGE_KEY, JSON.stringify(apiKeys));
+
+  // Show success notification
+  showConfigStatus("Configuration saved successfully!");
+}
+
+function showConfigStatus(message) {
+  // Create status element if it doesn't exist
+  let statusEl = document.querySelector(".config-status");
+  if (!statusEl) {
+    statusEl = document.createElement("div");
+    statusEl.className = "config-status";
+    document.body.appendChild(statusEl);
+  }
+
+  statusEl.textContent = message;
+  statusEl.classList.add("show");
+
+  setTimeout(() => {
+    statusEl.classList.remove("show");
+  }, 3000);
+}
+
+function openConfigModal() {
+  configModal.style.display = "block";
+}
+
+function closeConfigModal() {
+  configModal.style.display = "none";
+}
+
+// Close modal when clicking outside of it
+window.onclick = function (event) {
+  if (event.target === configModal) {
+    closeConfigModal();
+  }
+};
+
+// event listeners
+configButton.addEventListener("click", openConfigModal);
+closeModal.addEventListener("click", closeConfigModal);
+saveConfigButton.addEventListener("click", () => {
+  saveApiKeys();
+  closeConfigModal();
+});
 
 //streaming websocket setup
 let websocket = null;
@@ -121,6 +208,15 @@ function setupWebSocket() {
 
   websocket.onopen = () => {
     console.log("WebSocket connection established");
+    // Send API keys to the server
+    if (apiKeys) {
+      websocket.send(
+        JSON.stringify({
+          type: "config",
+          apiKeys: apiKeys,
+        })
+      );
+    }
   };
 
   websocket.onmessage = (event) => {
@@ -152,10 +248,21 @@ function setupWebSocket() {
       // Allow user to continue speaking without restarting session
       console.log("audio complete ✅");
       statusText.textContent = "Listening";
-        updateThoughtsDisplay("listening");
+      updateThoughtsDisplay("listening");
     } else if (data.status === "llm_response") {
       // Add bot message to chat
       addMessageToChat(data.text, "assistant");
+    } else if (data.status === "error" && data.type === "api_key") {
+      // Show API key error
+      errorContainer.style.display = "flex";
+      errorText.innerText =
+        data.message || "API key error. Please check your configuration.";
+      // Automatically open config modal
+      openConfigModal();
+    } else if (data.type === "config_updated") {
+          
+           saveApiKeys();
+           closeConfigModal();
     }
   };
 
@@ -282,7 +389,6 @@ recordButton.onclick = async () => {
       stopRecordButton.style.display = "none";
       pulseRing.classList.remove("listening");
       statusText.textContent = "Error";
-      
     }
   } else {
     // Resume existing audio context
@@ -313,9 +419,22 @@ stopRecordButton.onclick = () => {
 
 document.addEventListener("DOMContentLoaded", () => {
   stopRecordButton.style.display = "none";
-
   errorContainer.style.display = "none";
-
+  loadApiKeys();
+  if (
+    !apiKeys.murf &&
+    !apiKeys.assemblyai &&
+    !apiKeys.gemini &&
+    !apiKeys.tavily
+  ) {
+    setTimeout(() => {
+      openConfigModal();
+      addMessageToChat(
+        "Please configure your API keys to get started.",
+        "assistant"
+      );
+    }, 1000);
+  }
   addMessageToChat("Hello! How can I help you today?", "assistant");
 
   statusText.textContent = "Meow";

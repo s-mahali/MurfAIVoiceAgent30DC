@@ -7,22 +7,15 @@ import json
 import base64
 import logging
 from typing import Optional
+from config.config import api_keys
 
 load_dotenv()
-MURF_API_KEY = os.getenv('MURF_API_KEY')
+MURF_API_KEY = api_keys.murf
 
 
 # non-streaming murf service 
 async def murf_tts(text: str) -> dict:
-    """
-    Generate an audio file from the given text using Murf's text-to-speech API.
-
-    Args:
-        text (str): The text to convert to audio.
-
-    Returns:
-        dict: A dictionary containing the generated audio file, or an error message if the text is empty or no audio file is generated.
-    """
+   
     client = Murf(
         api_key=MURF_API_KEY
     )
@@ -39,10 +32,11 @@ async def murf_tts(text: str) -> dict:
 
     return {"audio_file": res.audio_file}
 
+
 WS_URL = "wss://api.murf.ai/v1/speech/stream-input"
 
 class MurfService:
-    def __init__(self, websocket, api_key: str):
+    def __init__(self, websocket, api_key: str = MURF_API_KEY):
         self.websocket = websocket
         self.api_key = api_key
         self.ws_url = WS_URL

@@ -17,8 +17,47 @@
       </div>
       <div class="mode-toggle">
         <button class="active">Assistant</button>
+        <button id="configButton" class="config-btn">⚙️ Config</button>
       </div>
     </header>
+
+    <!-- Configuration Modal -->
+    <div id="configModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>API Configuration</h2>
+          <span class="close-modal">&times;</span>
+        </div>
+        <div class="modal-body">
+          <p>Enter your API keys to use the services:</p>
+          <div class="config-form">
+            <div class="config-input">
+              <label for="murfApiKey">Murf API Key (Text-to-Speech)</label>
+              <input type="password" id="murfApiKey" placeholder="Enter Murf API Key">
+              <div class="key-info">Powers the voice of the assistant</div>
+            </div>
+            <div class="config-input">
+              <label for="assemblyaiApiKey">AssemblyAI API Key (Speech-to-Text)</label>
+              <input type="password" id="assemblyaiApiKey" placeholder="Enter AssemblyAI API Key">
+              <div class="key-info">Converts your speech to text</div>
+            </div>
+            <div class="config-input">
+              <label for="geminiApiKey">Gemini API Key (AI Model)</label>
+              <input type="password" id="geminiApiKey" placeholder="Enter Gemini API Key">
+              <div class="key-info">Powers the AI's understanding and responses</div>
+            </div>
+            <div class="config-input">
+              <label for="tavilyApiKey">Tavily API Key (Web Search)</label>
+              <input type="password" id="tavilyApiKey" placeholder="Enter Tavily API Key">
+              <div class="key-info">Allows the AI to search the web for information</div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="saveConfig" class="save-btn">Save Configuration</button>
+        </div>
+      </div>
+    </div>
 
     <main class="chat-container">
       <!-- Avatar and visualization -->

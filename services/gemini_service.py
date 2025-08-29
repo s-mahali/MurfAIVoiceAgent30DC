@@ -6,27 +6,57 @@ import logging
 import asyncio
 from datetime import date
 from services.tool_calling import web_search
+from config.config import api_keys
 
 load_dotenv()
 
+system_instruction = system_instruction = """
+    You are a waifu, a smart, multitasking college student from Delhi who's pursuing her degree in Computer Science.
+
+    PERSONALITY:
+    - You're friendly, helpful, and speak in a conversational way that balances between casual and intelligent.
+    - You mix English with occasional Hindi words and phrases that most Indians would understand.
+    - You're good at managing multiple tasks and solving problems quickly.
+    - You're tech-savvy and up-to-date on current events.
+
+    SPEAKING STYLE:
+    - Use phrases like "yaar", "acha", "matlab", and "haan" naturally in conversation
+    - Your tone is energetic, confident, and slightly playful
+    - You might say "Bilkul!" when agreeing enthusiastically
+    - When thinking, you might say phrases like "Hmm, let me think about this..."
+
+    TOOL USAGE INSTRUCTIONS:
+    1. For food delivery issues, order problems, late deliveries, or any customer service problems:
+    - ALWAYS use the customer_support_ticket tool
+    - Never try to solve these issues yourself
+    - DO NOT show JSON in your response, just confirm ticket creation
+
+    2. For current events, news, product launches, or time-sensitive information:
+    - ALWAYS use the web_search tool
+    - Summarize the information clearly after searching
+
+    3. For general conversation, personal advice, or academic questions:
+    - Answer directly without using tools
+    - Draw on your knowledge as a college student
+
+    IMPORTANT GUIDELINES:
+    - DO NOT include JSON or technical details in your responses
+    - If you create a support ticket, simply say "I've created a ticket for this issue" without showing any JSON
+    - Maintain your persona consistently throughout the conversation
+    - If you don't know something specific, admit it rather than making up information
+    - Be helpful but never share harmful content
+    """
+
 class GeminiService:
-    def __init__(self):
+    def __init__(self, api_key: str = api_keys.gemini ):
         try:
             self.client = genai.Client()
         except Exception as e:
             logging.error(f"Failed to initialize Gemini client: {e}")
             raise ValueError("GOOGLE_API_KEY not found or invalid.") from e
 
-        self.system_instruction = (
-            "You are a friendly and helpful girl from India. "
-            "You speak casually, like you're talking to a friend (yaar). "
-            "Use a mix of English and some common Hindi words where it feels natural. "
-            "Be warm, encouraging, and maintain a friendly, conversational tone. "
-            "Keep replies short and chat-like. "
-            f"Today's date is: {date.today()}. "
-            "Use web_search for real-time information when needed."
-        )
-        
+        self.system_instruction = system_instruction
+        self.support_tickets = {} 
         
         self.web_search_declaration = {
             "name": "web_search",
@@ -43,7 +73,37 @@ class GeminiService:
             }
         }
         
-        self.tools = types.Tool(function_declarations=[self.web_search_declaration])
+        self.customer_support_tool = {
+            "name": "customer_support_ticket",
+            "description": "Create a customer support ticket for specific issues",
+            "parameters": {
+               "type": "object",
+               "properties": {
+                 "issue_type": {
+                  "type": "string",
+                  "description": "Type of issue (billing, technical, account, feature_request, complaint)",
+                  "enum": ["billing", "technical", "account", "feature_request", "complaint"]
+                 },
+                 "description": {
+                  "type": "string",
+                  "description": "Detailed description of the issue or request"
+                 },
+                 "priority": {
+                  "type": "string",
+                  "description": "Priority level",
+                  "enum": ["low", "medium", "high", "urgent"],
+                  "default": "medium"
+                 },
+                 "contact_email": {
+                  "type": "string",
+                  "description": "Email address for follow-up (optional)"
+                 }
+                },
+                "required": ["issue_type", "description"]
+            }  
+        }
+        
+        self.tools = types.Tool(function_declarations=[self.web_search_declaration, self.customer_support_tool])
         
         # Initialize conversation history
         self.conversation_history = []
@@ -98,6 +158,38 @@ class GeminiService:
             logging.error(f"Error during Gemini API call: {e}")
             return "Arre yaar, something went wrong on my end. Let's try that again."
 
+    async def create_support_ticket(self, ticket_data: dict) -> dict:
+       """Create a customer support ticket"""
+       try:
+        issue_type = ticket_data.get("issue_type")
+        description = ticket_data.get("description")
+        priority = ticket_data.get("priority", "medium")
+        contact_email = ticket_data.get("contact_email", "")
+        
+        # Generate ticket ID
+        ticket_id = f"TKT{int(time.time())}"
+        
+        # Store ticket (locally)
+        self.support_tickets[ticket_id] = {
+            "issue_type": issue_type,
+            "description": description,
+            "priority": priority,
+            "contact_email": contact_email,
+            "created": datetime.now().isoformat(),
+            "status": "open"
+        }
+        print("ticket",self.support_tickets)
+        
+        return {
+            "status": "success",
+            "message": f"Support ticket created successfully",
+            "ticket_id": ticket_id,
+            "priority": priority,
+            "estimated_response": "Within 24 hours" if priority == "low" else "Within 4 hours"
+        }
+        
+       except Exception as e:
+        return {"status": "error", "message": str(e)}
     async def _handle_function_calls(self, function_calls, original_prompt: str) -> dict:
         """Execute function calls and return results"""
         results = {}
@@ -120,7 +212,19 @@ class GeminiService:
                         "success": False,
                         "error": str(e)
                     }
-        
+            elif func_call.name == "customer_support_ticket":
+              try:
+                 print("func_call.args",func_call.args)
+                 ticket_result = await self.create_support_ticket(func_call.args)
+                 results[func_call.name] = {
+                    "success": True,
+                    "result": ticket_result
+                 }
+              except Exception as e:
+                results[func_call.name] = {
+                    "success": False,
+                    "error": str(e)
+                }
         return results
 
     def _get_final_response(self, function_results: dict) -> str:
@@ -154,15 +258,19 @@ class GeminiService:
                     system_instruction=self.system_instruction
                 )
             )
+            print("yooooo" + final_response.text)
+            response_text = final_response.text
+            if '```json' in response_text or 'Ticket created successfully' in response_text:
+                 response_text = "Ticket created successfully. I've logged your issue and our team will look into it right away."
             
             # Add final model response to history
             model_content = types.Content(
                 role="model",
-                parts=[types.Part.from_text(text=final_response.text)]
+                parts=[types.Part.from_text(text=response_text)]
             )
             self.conversation_history.append(model_content)
             
-            return final_response.text
+            return response_text
             
         except Exception as e:
             logging.error(f"Error getting final response: {e}")
