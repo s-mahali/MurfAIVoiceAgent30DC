@@ -15,11 +15,12 @@ import uuid
 from services.socket import save_audio_chunk
 import asyncio
 import threading
+from config.config import api_keys
 
 load_dotenv()
-MURF_API_KEY = os.getenv('MURF_API_KEY')
-aai.settings.api_key =  os.getenv('ASSEMBLYAI_API_KEY')
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+# MURF_API_KEY = os.getenv('MURF_API_KEY')
+# aai.settings.api_key =  os.getenv('ASSEMBLYAI_API_KEY')
+# GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
 
 app = FastAPI()
@@ -304,11 +305,27 @@ async def agent_chat(file: UploadFile, session_id: str):
 #     except Exception as e:
 #         print("Error in websocket endpoint:", str(e))
 
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     print("WebSocket connection open")
     
+    try:
+        # Wait for potential configuration message
+        data = await asyncio.wait_for(websocket.receive_json(), timeout=1.0)
+        if isinstance(data, dict) and data.get("type") == "config":
+            print("Received config:", data)
+            new_keys = data.get("apiKeys", {})
+            api_keys.update_keys(new_keys)
+            await websocket.send_json({
+                "status": "config_updated",
+                "message": "API keys updated successfully"
+            })
+    except (asyncio.TimeoutError, WebSocketDisconnect):
+        pass
+    except Exception as e:
+        print(f"Error processing config: {e}")
     loop = asyncio.get_running_loop()
    
      # Initialize AssemblyAI client 
