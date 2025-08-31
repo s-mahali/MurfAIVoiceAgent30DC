@@ -64,9 +64,9 @@ cd Murf30Days
 
 ### 2. Setup Virtual Environment
 ```sh
-    python -m venv .venv
-   .venv\Scripts\activate  # Windows
-   source .venv/bin/activate  # macOS/Linux
+python -m venv .venv
+.venv\Scripts\activate  # Windows
+source .venv/bin/activate  # macOS/Linux
 ```
 ### 3. Install dependencies
 ```sh
@@ -75,10 +75,11 @@ cd Murf30Days
 
 ### 4. Set up API Keys
 Create a .env file in the root directory with the following content:
-```MURF_API_KEY=your_murf_api_key
-   ASSEMBLYAI_API_KEY=your_assemblyai_api_key
-   GEMINI_API_KEY=your_google_api_key
-   TAVILY_API_KEY=your_tavily_api_key
+```sh
+MURF_API_KEY=your_murf_api_key
+ASSEMBLYAI_API_KEY=your_assemblyai_api_key
+GEMINI_API_KEY=your_google_api_key
+TAVILY_API_KEY=your_tavily_api_key
 ```
 Or enter keys in the config panel in the UI.
 
@@ -92,20 +93,17 @@ Navigate to `http://127.0.0.1:8000/` to open the application.
 
 
 ### 🔌API Endpoints:
- ws/ → WebSocket for real-time voice chat
-POST /transcribe/file → Transcribe uploaded audio
-POST /agent/chat/{session_id} → Conversational AI (voice in, bot voice/text out)
-POST /tts/echo → Convert text to speech (Murf TTS)
-Tool APIs integrated for Web Search & Ticket Creation
+- `WebSocket /ws/` - Real-time communication for voice chat
+
 
 ---
 
 ### 💰 API Free Tier & Rate Limits
 
-Murf AI: $3 free credit, $0.03 / 1,000 characters, concurrency limit = 5
-AssemblyAI: Free trial available, billed per minute of audio
-Gemini: Generous free tier, subject to Google’s limits
-Tavily: Free tier available, 1000 requests/month
+- Murf AI: $3 free credit, $0.03 / 1,000 characters, concurrency limit = 5
+- AssemblyAI: Free trial available, billed per minute of audio
+- Gemini: Generous free tier, subject to Google’s limits
+- Tavily: Free tier available, 1000 requests/month
 
 ### 📂 Folder Structure
 ```sh
