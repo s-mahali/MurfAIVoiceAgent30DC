@@ -3,21 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Meow • Voice Assistant</title>
+    <title>Mizuki • AI Voice Assistant</title>
     <link rel="stylesheet" href="/static/style.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   </head>
   <body>
     <!-- Header with brand and mode toggle -->
     <header class="app-header">
       <div class="brand">
         <div class="logo">
-          <img src="/static/robot.png" alt="Saga" width="32" height="32" />
-          <span>Meow</span>
+          <img src="/static/robot.png" alt="Mizuki" width="32" height="32" />
+          <span>Mizuki</span>
+        </div>
+        <div class="powered-by">
+          Powered by <a href="https://murf.ai/api/docs/introduction/overview" target="_blank">Murf AI</a>
         </div>
       </div>
-      <div class="mode-toggle">
-        <button class="active">Assistant</button>
-        <button id="configButton" class="config-btn">⚙️ Config</button>
+      <div class="header-controls">
+        <button id="configButton" class="config-btn">⚙️</button>
       </div>
     </header>
 
@@ -60,19 +63,55 @@
     </div>
 
     <main class="chat-container">
+      <!-- Project description section -->
+      <section class="project-description">
+        <div class="description-card">
+          <h2>Meet Mizuki</h2>
+          <p>Your empathetic AI assistant who provides emotional support and real-time information.</p>
+          <div class="features">
+            <div class="feature">
+              <span class="feature-icon">💬</span>
+              <h3>Personal Therapy</h3>
+              <p>A friendly companion to help reduce stress and bring joy to your day.</p>
+            </div>
+            <div class="feature">
+              <span class="feature-icon">🌤️</span>
+              <h3>Real-time Data</h3>
+              <p>Get current weather, news, anime updates, and movie information.</p>
+            </div>
+            <div class="feature">
+              <span class="feature-icon">🇯🇵</span>
+              <h3>Japanese Flair</h3>
+              <p>Experience authentic conversations with occasional Japanese phrases.</p>
+            </div>
+          </div>
+          <div class="getting-started">
+            <p>Click the microphone to start talking with Mizuki!</p>
+          </div>
+        </div>
+      </section>
+
       <!-- Avatar and visualization -->
       <section class="viz-section">
         <div id="pulseRing" class="pulse-ring">
           <div class="ring-gradient"></div>
-          <div class="ring-inner"></div>
+          <div class="ring-inner">
+            <div class="avatar-placeholder">美月</div>
+          </div>
         </div>
-        <div class="status-text" id="statusText">Meow</div>
+        <div class="status-text" id="statusText">Ready to chat</div>
       </section>
 
       <!-- Chat interface -->
       <section class="chat-section">
         <div id="chatWindow" class="chat-window">
           <!-- Messages will be added here -->
+          <div class="message assistant">
+            <div class="message-content">
+              <div class="message-sender">Mizuki</div>
+              <div class="message-text">Konnichiwa! I'm Mizuki, your AI assistant. How can I help you today?</div>
+            </div>
+          </div>
         </div>
 
         <div class="chat-controls">
@@ -82,43 +121,38 @@
           </div>
 
           <!-- Error container -->
-          <div id="errorContainer">
+          <div id="errorContainer" class="error-container">
             <p id="errorText"></p>
           </div>
 
           <!-- Input area -->
           <div class="input-container">
             <div id="thoughtsDisplay" class="thoughts-display">
-              your thoughts...
+              Press mic to start talking...
             </div>
-            <button id="recordButton" class="record-btn">🎤</button>
-            <button id="stopButton" class="stop-btn">✕</button>
+            <button id="recordButton" class="record-btn">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 15C13.6569 15 15 13.6569 15 12V5C15 3.34315 13.6569 2 12 2C10.3431 2 9 3.34315 9 5V12C9 13.6569 10.3431 15 12 15Z" stroke="currentColor" stroke-width="2"/>
+                <path d="M19 10V12C19 15.866 15.866 19 12 19C8.13401 19 5 15.866 5 12V10" stroke="currentColor" stroke-width="2"/>
+                <path d="M12 19V22" stroke="currentColor" stroke-width="2"/>
+              </svg>
+            </button>
+            <button id="stopButton" class="stop-btn">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="6" y="6" width="12" height="12" rx="1" fill="currentColor"/>
+              </svg>
+            </button>
           </div>
         </div>
 
         <!-- Action buttons -->
         <div class="action-buttons">
-          <button id="resumeButton" class="action-btn">Resume</button>
           <button id="restartButton" class="action-btn highlight">
-            Restart
+            New Conversation
           </button>
         </div>
       </section>
     </main>
-
-    <!-- Hidden elements for backwards compatibility -->
-    <div id="recorderContainer" style="display: none"></div>
-    <div
-      id="streamingStatus"
-      class="streaming-status"
-      style="display: none"
-    ></div>
-    <audio id="recordingPlayer" style="display: none"></audio>
-    <section
-      class="transcriptSection"
-      id="transcriptSection"
-      style="display: none"
-    ></section>
 
     <script src="/static/main.js"></script>
   </body>

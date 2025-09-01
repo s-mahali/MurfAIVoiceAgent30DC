@@ -41,13 +41,18 @@ class MurfService:
         self.api_key = api_key
         self.ws_url = WS_URL
         self.connection: Optional[websockets.WebSocketClientProtocol] = None
+        self.is_connected = False
+        self.receive_task: Optional[asyncio.Task] = None
         
     async def connect(self):
         """Connect to the Murf WebSocket API."""
         try:
+            if self.is_connected and self.connection:
+                return
             self.connection = await websockets.connect(
                 f"{self.ws_url}?api_key={self.api_key}&sample_rate=44100&channel_type=MONO&format=WAV"
             )
+            self.is_connected = True
             print("Connected to Murf.ai TTS service")
             
             #send voice configuration
@@ -61,60 +66,87 @@ class MurfService:
                 }
             }
             await self.connection.send(json.dumps(voice_config))
-        
+            self.receive_task = asyncio.create_task(self._receive_audio_stream())
         except Exception as e:
             logging.error(f"Failed to connect to Murf.ai: {e}")
             raise
         
     async def synthesize_speech(self, text:str):
         """Convert text to speech and return base64 audio"""
-        if not self.connection:
+        if not self.is_connected or not self.connection:
             await self.connect()    
             
         try:
             #send text to be synthesized
             text_message = {
                 'text': text,
-                'end': True,
+                'end': False,
                  
                 
             }
             await self.connection.send(json.dumps(text_message))
-            asyncio.create_task(self._receive_audio_stream())
+            print("Text sent to Murf.ai")
         
         except Exception as e:
             logging.error(f"Failed to synthesize speech: {e}")
+            self.is_connected = False
+            if self.connection:
+                await self.connection.close()
+                self.connection = None
             raise
         
     async def _receive_audio_stream(self):
         """Handle audio streaming in background"""
         try:
-           while True:
-              response = await self.connection.recv()
-              data = json.loads(response)
-            
-              if "audio" in data:
-                await self.websocket.send_json({
-                    "status": "audio_chunk",
-                    "audio_base64": data["audio"],
-                    "is_complete": False
-                })
-            
-              if data.get("final"):
-                await self.websocket.send_json({
-                    "status": "audio_complete"
-                })
-                await self.websocket.send_json({
-                    "status": "bot_speaking",
-                    "active": False
-                })
-                break
-                
+            first_chunk = True
+            while self.is_connected and self.connection:
+                try:
+                    response = await asyncio.wait_for(self.connection.recv(), timeout=30.0)
+                    data = json.loads(response)
+                    
+                    if "audio" in data:
+                        audio_data = data["audio"]
+                        await self.websocket.send_json({
+                            "status": "audio_chunk",
+                            "audio_base64": audio_data,
+                            "is_complete": False
+                        })
+                    
+                    if data.get("final"):
+                        await self.websocket.send_json({
+                            "status": "audio_complete"
+                        })
+                        await self.websocket.send_json({
+                            "status": "bot_speaking",
+                            "active": False
+                        })
+                        print("Audio synthesis completed")
+                        break
+                        
+                except asyncio.TimeoutError:
+                    # Keep connection alive
+                    continue
+                except websockets.exceptions.ConnectionClosed:
+                    print("Murf connection closed unexpectedly")
+                    break
+                    
         except Exception as e:
-          logging.error(f"Audio streaming error: {e}")        
+            logging.error(f"Audio streaming error: {e}")
+        finally:
+            self.is_connected = False       
         
     async def close(self):
         """Close the WebSocket connection"""
+        self.is_connected = False
+        
+        if self.receive_task:
+            self.receive_task.cancel()
+            try:
+                await self.receive_task
+            except asyncio.CancelledError:
+                pass
+            self.receive_task = None
+            
         if self.connection:
             await self.connection.close()
             self.connection = None
